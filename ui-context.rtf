@@ -1,0 +1,825 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2869
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Arial-BoldMT;\f1\fswiss\fcharset0 Arial-ItalicMT;\f2\fswiss\fcharset0 ArialMT;
+\f3\froman\fcharset0 Times-Roman;\f4\fmodern\fcharset0 CourierNewPSMT;\f5\fnil\fcharset0 AppleColorEmoji;
+}
+{\colortbl;\red255\green255\blue255;\red26\green54\blue93;\red74\green85\blue104;\red43\green76\blue126;
+\red43\green108\blue176;\red255\green255\blue255;\red191\green191\blue191;\red44\green82\blue130;\red113\green128\blue150;
+\red39\green103\blue73;\red197\green48\blue48;}
+{\*\expandedcolortbl;;\csgenericrgb\c10196\c21176\c36471;\csgenericrgb\c29020\c33333\c40784;\csgenericrgb\c16863\c29804\c49412;
+\csgenericrgb\c16863\c42353\c69020;\csgenericrgb\c100000\c100000\c100000;\csgray\c79525;\csgenericrgb\c17255\c32157\c50980;\csgenericrgb\c44314\c50196\c58824;
+\csgenericrgb\c15294\c40392\c28627;\csgenericrgb\c77255\c18824\c18824;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f0\b\fs56 \cf2 UI Context MCP\
+\pard\pardeftab720\sa400\pardirnatural\partightenfactor0
+
+\f1\i\b0\fs26 \cf3 A developer tool for AI-powered live UI debugging\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\i0\b\fs36 \cf2 Problem\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Developers debugging local web apps constantly need to connect three things mentally: what they see in the browser, the underlying DOM and CSS, and the source code and runtime conditions behind it.\
+Today this is fragmented across browser DevTools, the IDE, and AI assistants. Even with Claude Code, Cursor, or Copilot, there is no seamless way to attach an AI query directly to a live UI element. Developers are forced to copy HTML into chat, describe the UI in words, or inspect the DOM step-by-step manually.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Core Gap\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 There is no system that allows:\
+\pard\pardeftab720\li720\sa200\pardirnatural\partightenfactor0
+
+\f1\i \cf4 "Select a UI element in a running local web app \uc0\u8594  ask an AI question \u8594  get reasoning grounded in actual DOM + state context."\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\i0\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Proposed Solution\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 A local-first "UI Context MCP" system that connects live browser UI selection with Claude Code. The developer selects any element in a localhost app, and Claude receives structured, layered context \'97 from raw DOM all the way up to source file and line number.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Architecture\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\b0\fs18 \cf5 [Browser \'97 localhost app]\
+        \uc0\u8595   element selection / Ctrl+Shift+K\
+[Chrome Extension \'97 content script]\
+        \uc0\u8595   layered context capture (all 4 layers)\
+[Local Bridge Server \'97 Node.js]\
+        \uc0\u8595   structured UI_CONTEXT payload\
+[MCP Server \'97 UI Context Tools]\
+        \uc0\u8595   analyze_ui_element(question, UI_CONTEXT)\
+[Claude Code]\
+        \uc0\u8595 \
+[Explanation + Debug + Suggested Fix]\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Layered Context System\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Context is captured in four independent layers. Each layer is attempted in order. If a layer is unavailable, it is skipped and Claude is told explicitly what is missing. The tool is useful in every environment, not just ideal ones.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs20 \cf6 Layer\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Name\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 What It Provides\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Availability\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f2\b0 \cf0 1\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 DOM Snapshot\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Raw HTML, attributes, computed styles, DOM path, bounding box\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 All websites, always\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 2\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Accessibility Tree\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Semantic role, name, disabled state, ARIA properties\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 All websites, always\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 3\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 React Fiber\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Component name, props, hook types + values, component stack\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 React / Vue / Next.js client \'97 dev + prod\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2160
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx6480
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 4\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Source Map\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Source file path, line number, column\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Dev mode builds only (not prod, not CodeSandbox)\cell \lastrow\row
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Layer 1 \'97 DOM Snapshot\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Always available on any website. Captures the raw browser state of the selected element including computed styles \'97 what the browser actually resolved, not what was written in CSS.\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\fs18 \cf5 dom: \{\
+  html:       '<button disabled class="checkout-btn">Checkout</button>',\
+  tag:        'BUTTON',\
+  attributes: \{ disabled: true, class: 'checkout-btn' \},\
+  styles: \{\
+    display: 'flex', opacity: '0.5',\
+    pointerEvents: 'none', visibility: 'visible'\
+  \}\
+\}\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Layer 2 \'97 Accessibility Tree\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Always available. The browser builds this automatically from your HTML. Stable (roles don't change when class names do) and captures intent \'97 what the element is supposed to do, not just what it looks like.\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\fs18 \cf5 accessibility: \{\
+  role:      'button',\
+  name:      'Checkout',\
+  disabled:  true,\
+  ariaHidden: false,\
+\}\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Layer 3 \'97 React Fiber (Component Mapping)\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Available when React is running in the browser. React stamps every DOM node with a hidden reference to its internal Fiber node at runtime via a property like __reactFiber$abc123. Walking .return (parent) up the fiber tree gives the full component hierarchy.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b \cf8 Verified React 18+ Internal Properties\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Discovered through live DevTools experimentation on real React apps:\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs20 \cf6 Property\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Status\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 What It Contains\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f2\b0 \cf0 __reactFiber$[key]\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Entry point \'97 the fiber node attached to every DOM element\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber.type.name\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Component name e.g. 'CheckoutButton'\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber.memoizedProps\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Props passed to the component at render time\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber.return\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Parent fiber \'97 used to walk up the tree\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber.memoizedState\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Linked list of hook state values\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber._debugHookTypes\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Working\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Array of hook types per slot e.g. ['useState', 'useState']\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber._debugStack\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9888 \u65039 
+\f2  Partial\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Stack trace with source file + line (localhost only, stripped in prod + CodeSandbox)\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber._debugOwner\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u9989 
+\f2  Present\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Fiber that created this element\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 fiber._debugSource\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f5 \cf0 \uc0\u10060 
+\f2  Removed\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 React 17 only \'97 gone in React 18+\cell \lastrow\row
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b \cf8 Hook State Reading\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 useState values are stored as a linked list in fiber.memoizedState. React 18 also exposes _debugHookTypes which names the hook type for each slot. Together they give partial named state:\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\fs18 \cf5 // fiber._debugHookTypes = ['useState', 'useState']\
+// fiber.memoizedState linked list:\
+//   node1.memoizedState = 0       (count)\
+//   node2.memoizedState = 'hello' (name)\
+\
+hooks: [\
+  \{ type: 'useState', value: 0 \},\
+  \{ type: 'useState', value: 'hello' \}\
+]\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\sa160\pardirnatural\partightenfactor0
+
+\f0\b\fs22 \cf0 Limitation: 
+\f2\b0 Variable names (count, name) are stripped at runtime. _debugHookTypes gives the hook type per slot but not the developer's variable name. Full named state requires the React DevTools hook \'97 a future enhancement.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b \cf8 Full Component Stack Output\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\b0\fs18 \cf5 component: \{\
+  available: true,\
+  framework: 'react',\
+  stack: [\
+    \{ name: 'CheckoutButton',\
+      props: \{ disabled: true, onClick: '[fn]' \},\
+      hooks: [\{ type: 'useState', value: [] \}] \},\
+    \{ name: 'Cart',\
+      props: \{ items: [] \},\
+      hooks: [\{ type: 'useState', value: false \}] \},\
+    \{ name: 'App', props: \{\}, hooks: null \}\
+  ]\
+\}\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\sa160\pardirnatural\partightenfactor0
+
+\f0\b\fs22 \cf0 Real world: 
+\f2\b0 Tested on a live Next.js localhost app \'97 fiber walk returned a stack 55 components deep, including all framework internals (InnerLayoutRouter, AppRouter, ErrorBoundary etc.) and user components.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Layer 4 \'97 Source Mapping\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Available in dev mode builds on real localhost servers. React 18 stores source info inside _debugStack as an Error object with a full stack trace string. The file path and line number are parsed from this string.\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\fs18 \cf5 // Raw _debugStack.toString():\
+// Error: react-stack-top-frame\
+//   at App (/src/App.js:13:49)   \uc0\u8592  parse this line\
+//   at renderWithHooks (...)\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\fs18 \cf5 source: \{\
+  available: true,\
+  file:   '/src/components/CheckoutButton.tsx',\
+  line:   23,\
+  column: 5\
+\}\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\sa160\pardirnatural\partightenfactor0
+
+\f0\b\fs22 \cf0 Note: 
+\f2\b0 _debugStack is populated on real localhost dev servers (Vite, CRA, Next.js dev). It is stripped in production builds, CodeSandbox, and some hosted sandboxes. The regex filters for lines containing /src/ and excludes node_modules.\
+
+\f0\b Next.js specific: 
+\f2\b0 Next.js may use webpack-internal:// paths instead of /src/ paths in stack traces. The parser needs a fallback pattern for this \'97 identified as a known issue to fix before shipping.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 The Capture Function\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 The complete captureUIContext() function runs inside the Chrome extension content script. It attempts all four layers, marks unavailable ones, and returns a single merged object.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 function captureUIContext(el) \{\
+\
+  // Layer 1 \'97 DOM\
+  const dom = \{\
+    html: el.outerHTML,\
+    tag: el.tagName,\
+    attributes: Object.fromEntries([...el.attributes].map(a => [a.name, a.value])),\
+    styles: \{\
+      display: getComputedStyle(el).display,\
+      opacity: getComputedStyle(el).opacity,\
+      pointerEvents: getComputedStyle(el).pointerEvents,\
+      visibility: getComputedStyle(el).visibility,\
+    \}\
+  \}\
+\
+  // Layer 2 \'97 Accessibility\
+  const accessibility = \{\
+    role: el.getAttribute('role') || el.tagName.toLowerCase(),\
+    name: el.getAttribute('aria-label') || el.textContent.trim().slice(0, 50),\
+    disabled: el.hasAttribute('disabled'),\
+    ariaHidden: el.getAttribute('aria-hidden') === 'true',\
+  \}\
+\
+  // Layer 3 \'97 React Fiber\
+  const component = \{ available: false \}\
+  const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber'))\
+\
+  if (fiberKey) \{\
+    component.available = true\
+    component.framework = 'react'\
+    component.stack = []\
+\
+    let fiber = el[fiberKey]\
+    while (fiber) \{\
+      const name = fiber.type?.name\
+      if (name && typeof fiber.type !== 'string') \{\
+\
+        // hook states\
+        let hooks = null\
+        if (fiber._debugHookTypes) \{\
+          hooks = []\
+          let hookNode = fiber.memoizedState\
+          fiber._debugHookTypes.forEach(type => \{\
+            if (!hookNode) return\
+            hooks.push(\{ type, value: hookNode.memoizedState \})\
+            hookNode = hookNode.next\
+          \})\
+        \}\
+\
+        component.stack.push(\{\
+          name,\
+          props: fiber.memoizedProps,\
+          hooks\
+        \})\
+      \}\
+      fiber = fiber.return\
+    \}\
+  \}\
+\
+  // Layer 4 \'97 Source (works on real localhost, not CodeSandbox)\
+  const source = \{ available: false \}\
+  if (fiberKey) \{\
+    let fiber = el[fiberKey]\
+    while (fiber) \{\
+      const stack = fiber._debugStack?.toString() || ''\
+      const line = stack.split('\\n').find(l => l.includes('/src/') && !l.includes('node_modules'))\
+      if (line) \{\
+        const match = line.match(/at (\\S+) \\((.+):(\\d+):(\\d+)\\)/)\
+        if (match) \{\
+          source.available = true\
+          source.file = match[2]\
+          source.line = parseInt(match[3])\
+          source.column = parseInt(match[4])\
+          break\
+        \}\
+      \}\
+      fiber = fiber.return\
+    \}\
+  \}\
+\
+  return \{\
+    dom,\
+    accessibility,\
+    component,\
+    source,\
+    meta: \{\
+      url: location.href,\
+      layers: ['dom', 'accessibility',\
+        component.available && 'component',\
+        source.available && 'source'\
+      ].filter(Boolean)\
+    \}\
+  \}\
+\}\
+\
+// Run it\
+console.log(captureUIContext(document.querySelector('h1')))
+\f4\fs18 \cf5 \
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Graceful Degradation by Environment\
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\fs20 \cf6 Environment\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Layers Available\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f2\b0 \cf0 Plain HTML / JS site\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 React production build\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility + component (name, props, hooks)\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 React dev build (localhost)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility + component (full) + source\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Next.js \'97 client components\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility + component (full) + source*\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Next.js \'97 server components\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility only (pre-rendered, no fiber)\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Vue 3\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility + component (name + props)\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 CodeSandbox / StackBlitz\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility + component (no source \'97 sandboxed)\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx4320
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Svelte\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 dom + accessibility only (compiles away)\cell \lastrow\row
+\pard\pardeftab720\sb80\sa200\pardirnatural\partightenfactor0
+
+\f1\i\fs18 \cf9 * Next.js may use webpack-internal:// paths \'97 parser fix needed.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\i0\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Framework Support\
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\fs20 \cf6 Framework\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Component Mapping\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf6 Notes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+
+\f2\b0 \cf0 React (CRA, Vite)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Full\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 __reactFiber$ walk \'97 name, props, hook types + values\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Next.js (client components)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Full\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Same as React \'97 renders via React in browser\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Next.js (server components)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 DOM only\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 No fiber at runtime \'97 HTML arrives pre-rendered\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Vue 3\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Full (planned)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 __vue_app__ / __vueParentComponent on DOM nodes\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Angular\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Partial (planned)\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 ng properties on DOM nodes \'97 less structured\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Svelte\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 DOM only\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Compiles away \'97 no runtime component trace\cell \row
+
+\itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrl\brdrnil \trbrdrt\brdrnil \trbrdrr\brdrnil 
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx2880
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx5760
+\clvertalc \clshdrawnil \clbrdrt\brdrs\brdrw20\brdrcf7 \clbrdrl\brdrs\brdrw20\brdrcf7 \clbrdrb\brdrs\brdrw20\brdrcf7 \clbrdrr\brdrs\brdrw20\brdrcf7 \clpadl100 \clpadr100 \gaph\cellx8640
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 Plain HTML / JS\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 DOM only\cell 
+\pard\intbl\itap1\pardeftab720\pardirnatural\partightenfactor0
+\cf0 DOM is source of truth \'97 nothing to map\cell \lastrow\row
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Core Interaction Flow (MVP)\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\fs24 \cf8 Step 1 \'97 Select\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Developer hovers over any UI element in their localhost app and presses Ctrl+Shift+K. Extension highlights the element and opens a question input.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf8 Step 2 \'97 Capture\
+\pard\pardeftab720\sa120\pardirnatural\partightenfactor0
+
+\f2\b0\fs22 \cf0 Content script runs captureUIContext(el) \'97 all four layers attempted in parallel. Failed layers are flagged as unavailable. Single UI_CONTEXT object sent to local bridge server.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf8 Step 3 \'97 MCP Tool Call\
+\pard\pardeftab720\li720\sa40\pardirnatural\partightenfactor0
+
+\f4\b0\fs18 \cf5 analyze_ui_element(question, UI_CONTEXT)\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf8 Step 4 \'97 Claude Responds\
+\pard\pardeftab720\li720\sa200\pardirnatural\partightenfactor0
+
+\f1\i\b0\fs22 \cf10 The button is disabled because Cart is passing items=[] to CheckoutButton, which sets disabled=\{items.length === 0\}. The items array is empty due to failed API hydration in useCart().\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\i0\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 MVP Scope\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\fs28 \cf4 Must Have\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\pardirnatural\partightenfactor0
+\ls1\ilvl0
+\f2\b0\fs22 \cf0 {\listtext	\uc0\u8226 	}Element picker \'97 hover highlight + Ctrl+Shift+K trigger\
+{\listtext	\uc0\u8226 	}Layer 1: DOM snapshot \'97 HTML, tag, attributes, computed styles\
+{\listtext	\uc0\u8226 	}Layer 2: Accessibility \'97 role, name, disabled, ARIA attributes\
+{\listtext	\uc0\u8226 	}Layer 3: React fiber walk \'97 component stack, props, _debugHookTypes + memoizedState\
+{\listtext	\uc0\u8226 	}Merge all available layers into single UI_CONTEXT payload\
+{\listtext	\uc0\u8226 	}Local Node.js bridge server\
+{\listtext	\uc0\u8226 	}MCP tool: analyze_ui_element(question, UI_CONTEXT)\
+{\listtext	\uc0\u8226 	}Claude Code integration\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Known Issues to Fix Before Shipping\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\pardirnatural\partightenfactor0
+\ls2\ilvl0
+\f2\b0\fs22 \cf0 {\listtext	\uc0\u8226 	}Next.js webpack-internal:// paths not matched by Layer 4 source parser\
+{\listtext	\uc0\u8226 	}Hook state values have types but not variable names\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs28 \cf4 Later\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\pardirnatural\partightenfactor0
+\ls3\ilvl0
+\f2\b0\fs22 \cf0 {\listtext	\uc0\u8226 	}Named hook state via React DevTools hook\
+{\listtext	\uc0\u8226 	}Vue 3 component mapping\
+{\listtext	\uc0\u8226 	}Source map linking \'97 file + exact line in editor\
+{\listtext	\uc0\u8226 	}Action execution \'97 click, fill, modify UI elements\
+{\listtext	\uc0\u8226 	}Multi-element comparison\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Design Principles\
+\pard\pardeftab720\sa160\pardirnatural\partightenfactor0
+
+\fs22 \cf0 1. Selection-first. 
+\f2\b0 The element is the primary object, not the query.\
+
+\f0\b 2. Layered \'97 not all-or-nothing. 
+\f2\b0 Useful on any website. Each layer makes answers more precise.\
+
+\f0\b 3. Structured data, not screenshots. 
+\f2\b0 DOM nodes, computed styles, and component trees give Claude grounded reasoning.\
+
+\f0\b 4. Claude as the reasoning layer. 
+\f2\b0 The system captures and forwards. It does not interpret UI itself.\
+
+\f0\b 5. Local-first. 
+\f2\b0 Runs entirely on localhost. No cloud dependency for context capture.\
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f3\fs24 \cf0 \
+\pard\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b\fs36 \cf2 Why It Matters\
+\pard\pardeftab720\li720\sa160\pardirnatural\partightenfactor0
+
+\f4\b0\fs20 \cf11 Before:  inspect DOM \uc0\u8594  trace state \u8594  guess code path \u8594  test fix\
+\pard\pardeftab720\li720\sa200\pardirnatural\partightenfactor0
+\cf10 After:   click element \uc0\u8594  ask question \u8594  get grounded explanation + fix\
+}
