@@ -228,8 +228,8 @@ Tier 2 detail: on connection the MCP can **detect the bundler** (read `package.j
 1. **Bookmarklet size vs `dom-accessibility-api`** — inlining may exceed comfortable bookmarklet size. Mitigation: minimal computed read for the prototype, full lib in the extension. (§4.1)
 2. **`_debugSource` availability** varies by React version/build — Tier 0 will frequently report `unavailable`. Acceptable for the prototype; Tier 1 is the real fix.
 3. **Fiber stack noise** — framework internals bloat the stack; needs a sensible user-component filter/denylist.
-4. **stdio MCP + shared file vs HTTP single-process** — prototype uses the former for config-free reliability; revisit once the loop is proven.
-5. **Prototype package layout** — monorepo (`bookmarklet/`, `daemon/`, `mcp/`, `shared/`) vs three loose folders; decide at plan time.
+4. **stdio MCP + shared file vs HTTP single-process** — **DECIDED: stdio MCP + shared file** for config-free reliability; MCP-over-HTTP single-process is the next-phase consolidation (§10).
+5. **Prototype package layout** — **DECIDED: monorepo** with `bookmarklet/`, `daemon/`, `mcp/`, `shared/` workspaces (shared types + the safe serializer live in `shared/`).
 
 ---
 
