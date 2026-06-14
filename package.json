@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": ["shared", "mcp", "daemon", "bookmarklet"],
   "scripts": {
     "test": "vitest run",
     "daemon": "tsx daemon/src/index.ts",
