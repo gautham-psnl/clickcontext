@@ -31,6 +31,36 @@ describe('getLatestUiContextText', () => {
     expect(out.context).toEqual(ctx);
   });
 
+  it('resolves per-frame source and flags user vs library components', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ui-ctx-frames-'));
+    mkdirSync(join(root, 'components'), { recursive: true });
+    const heroFile = join(root, 'components/Hero.tsx');
+    writeFileSync(heroFile, Array.from({ length: 10 }, (_, i) => `h${i + 1}`).join('\n'), 'utf8');
+    const withStack: UiContext = {
+      ...ctx,
+      component: {
+        available: true,
+        framework: 'react',
+        stack: [
+          { name: 'Hero', props: {}, hooks: null, source: { available: true, file: heroFile, line: 5 } },
+          { name: 'LibButton', props: {}, hooks: null, source: { available: true, file: '/x/node_modules/lib/Button.tsx', line: 3 } },
+        ],
+      },
+      meta: { ...ctx.meta, layers: ['dom', 'accessibility', 'component'] },
+    };
+    writeLatestCapture(withStack, path);
+    try {
+      const out = JSON.parse(await getLatestUiContextText(path, root));
+      const [hero, lib] = out.context.component.stack;
+      expect(hero.isUserComponent).toBe(true);
+      expect(hero.source.resolvedFile).toContain('Hero.tsx');
+      expect(hero.source.resolvedLine).toBe(5);
+      expect(lib.isUserComponent).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('enriches the source layer with real code lines (Tier 1)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ui-ctx-tool-root-'));
     mkdirSync(join(root, 'src'), { recursive: true });

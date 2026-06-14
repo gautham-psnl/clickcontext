@@ -24,6 +24,8 @@ export interface ComponentFrame {
   name: string;
   props: unknown;
   hooks: HookInfo[] | null;
+  source?: SourceLayer; // where this frame's element was created (resolved server-side)
+  isUserComponent?: boolean; // resolved source is in the project, not node_modules/framework
 }
 
 export interface ComponentLayer {

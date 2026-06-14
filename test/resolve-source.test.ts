@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, rmSync, existsSync, mkdtempSync, mkdirSync } from 'node:fs';
-import { normalizeSourcePath, resolveSource, traceToOriginal } from '../mcp/src/resolve-source';
+import { normalizeSourcePath, resolveSource, resolveFrameSource, traceToOriginal } from '../mcp/src/resolve-source';
 import type { SourceLayer } from '@ui/shared';
 
 describe('normalizeSourcePath', () => {
@@ -93,5 +93,41 @@ describe('resolveSource', () => {
     const out = await resolveSource(src, { projectRoot: '/tmp', fetchImpl });
     expect(out.code).toBeUndefined();
     expect(out.resolveError).toMatch(/source map/i);
+  });
+});
+
+describe('resolveFrameSource', () => {
+  const chunkJs = (map: unknown) => `x=1\n//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(map)).toString('base64')}`;
+
+  it('flags a user component and resolves the original line (no code window)', async () => {
+    const js = chunkJs(MAP);
+    const fetchImpl = (async () => ({ ok: true, text: async () => js })) as unknown as typeof fetch;
+    const out = await resolveFrameSource(
+      { available: true, file: 'http://localhost:3000/_next/static/chunks/c.js', line: 1, column: 1 },
+      { projectRoot: '/tmp', fetchImpl },
+    );
+    expect(out.isUserComponent).toBe(true);
+    expect(out.source.resolvedLine).toBe(5);
+    expect(out.source.resolvedFile).toContain('Events.tsx');
+    expect(out.source.code).toBeUndefined();
+  });
+
+  it('flags a library frame (node_modules) as non-user', async () => {
+    const out = await resolveFrameSource(
+      { available: true, file: '/proj/node_modules/some-lib/Button.tsx', line: 3 },
+      { projectRoot: '/proj' },
+    );
+    expect(out.isUserComponent).toBe(false);
+  });
+
+  it('shares the source-map cache across frames (fetches once)', async () => {
+    const js = chunkJs(MAP);
+    let calls = 0;
+    const fetchImpl = (async () => { calls += 1; return { ok: true, text: async () => js }; }) as unknown as typeof fetch;
+    const cache = new Map<string, unknown | null>();
+    const frame: SourceLayer = { available: true, file: 'http://localhost:3000/_next/static/chunks/c.js', line: 1, column: 1 };
+    await resolveFrameSource({ ...frame }, { projectRoot: '/tmp', fetchImpl, mapCache: cache });
+    await resolveFrameSource({ ...frame }, { projectRoot: '/tmp', fetchImpl, mapCache: cache });
+    expect(calls).toBe(1);
   });
 });

@@ -9,7 +9,10 @@ export interface ResolveOptions {
   projectRoot: string;
   window?: number;
   fetchImpl?: typeof fetch;
+  mapCache?: Map<string, unknown | null>; // share fetched source maps across frames
 }
+
+const LIBRARY_PATH = /node_modules|next[\\/]dist|[\\/]\.next[\\/]/;
 
 /** Strip dev-server / bundler decorations to get a filesystem-ish path. */
 export function normalizeSourcePath(raw: string): string {
@@ -85,7 +88,14 @@ export function traceToOriginal(rawMap: unknown, line: number, column: number): 
 }
 
 /** Fetch a chunk's source map: inline data-URI, sourceMappingURL comment, or <chunk>.map. */
-async function fetchSourceMap(chunkUrl: string, fetchImpl: typeof fetch): Promise<unknown | null> {
+async function fetchSourceMap(chunkUrl: string, fetchImpl: typeof fetch, cache?: Map<string, unknown | null>): Promise<unknown | null> {
+  if (cache?.has(chunkUrl)) return cache.get(chunkUrl) ?? null;
+  const rawMap = await fetchSourceMapUncached(chunkUrl, fetchImpl);
+  cache?.set(chunkUrl, rawMap);
+  return rawMap;
+}
+
+async function fetchSourceMapUncached(chunkUrl: string, fetchImpl: typeof fetch): Promise<unknown | null> {
   const res = await fetchImpl(chunkUrl);
   if (!res.ok) {
     const direct = await fetchImpl(`${chunkUrl}.map`);
@@ -113,7 +123,7 @@ export async function resolveSource(source: SourceLayer, opts: ResolveOptions): 
   if (isBundledChunk(source.file)) {
     const fetchImpl = opts.fetchImpl ?? fetch;
     try {
-      const rawMap = await fetchSourceMap(source.file, fetchImpl);
+      const rawMap = await fetchSourceMap(source.file, fetchImpl, opts.mapCache);
       if (!rawMap) return { ...source, resolveError: 'bundled chunk; source map not found' };
       const orig = traceToOriginal(rawMap, source.line, source.column ?? 1);
       if (!orig) return { ...source, resolveError: 'source map did not map this position' };
@@ -139,4 +149,44 @@ export async function resolveSource(source: SourceLayer, opts: ResolveOptions): 
   } catch (e) {
     return { ...source, resolveError: `read failed: ${(e as Error).message}` };
   }
+}
+
+/**
+ * Lightweight per-frame resolution for the component stack: resolves the original
+ * file + line and flags whether it's the user's own code (vs node_modules/framework).
+ * No code window — keeps the stack payload small. Shares the source-map cache.
+ */
+export async function resolveFrameSource(
+  source: SourceLayer,
+  opts: ResolveOptions,
+): Promise<{ source: SourceLayer; isUserComponent?: boolean }> {
+  if (!source.available || !source.file || !source.line) return { source };
+
+  let originalPath: string | null = null;
+  let originalLine: number | null = null;
+
+  if (isBundledChunk(source.file)) {
+    try {
+      const rawMap = await fetchSourceMap(source.file, opts.fetchImpl ?? fetch, opts.mapCache);
+      const orig = rawMap ? traceToOriginal(rawMap, source.line, source.column ?? 1) : null;
+      if (orig) {
+        originalPath = orig.source;
+        originalLine = orig.line;
+      }
+    } catch {
+      return { source }; // leave the raw chunk position; element-level resolution reports the error
+    }
+  } else {
+    originalPath = source.file;
+    originalLine = source.line;
+  }
+
+  if (!originalPath) return { source };
+  const normalized = normalizeSourcePath(originalPath);
+  const onDisk = resolveFilePath(originalPath, opts.projectRoot);
+  const isUserComponent = !LIBRARY_PATH.test(normalized) && (onDisk != null || !isBundledChunk(originalPath));
+  return {
+    source: { ...source, resolvedFile: onDisk ?? normalized, resolvedLine: originalLine ?? undefined },
+    isUserComponent,
+  };
 }

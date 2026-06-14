@@ -1,5 +1,6 @@
 import type { ComponentLayer, ComponentFrame, HookInfo } from '@ui/shared';
 import { safeSerialize } from '@ui/shared';
+import { sourceFromFiber } from './source';
 
 const INTERNAL_NAMES = new Set([
   // React / generic
@@ -78,6 +79,7 @@ export function captureComponent(el: Element): ComponentLayer {
         name,
         props: safeSerialize(fiber.memoizedProps),
         hooks: readHooks(fiber),
+        source: sourceFromFiber(fiber as unknown as Parameters<typeof sourceFromFiber>[0]),
       });
     }
     fiber = fiber.return as FiberLike | null | undefined;

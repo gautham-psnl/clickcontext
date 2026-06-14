@@ -30,6 +30,7 @@ function attachFiber(el: Element): void {
     memoizedProps: { disabled: true, onClick: function handleClick() {} },
     _debugHookTypes: ['useState', 'useState'],
     memoizedState: { memoizedState: 0, next: { memoizedState: 'hi', next: null } },
+    _debugSource: { fileName: '/src/CheckoutButton.tsx', lineNumber: 12, columnNumber: 3 },
     return: internalFiber,
   };
   (el as any)['__reactFiber$abc123'] = btnFiber;
@@ -57,6 +58,8 @@ describe('Layer 3 React fiber', () => {
       { type: 'useState', value: 'hi' },
     ]);
     expect(comp.stack![2].hooks).toBeNull(); // App has no _debugHookTypes
+    // per-frame source captured from the fiber (resolved server-side later)
+    expect(checkout.source).toEqual({ available: true, file: '/src/CheckoutButton.tsx', line: 12, column: 3 });
   });
 
   it('filters Next 16 / React 19 framework internals, keeping user components', () => {

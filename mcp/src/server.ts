@@ -10,7 +10,7 @@ export function buildServer(): McpServer {
     {
       title: 'Get latest UI context',
       description:
-        'Returns the most recently captured live UI element context: DOM (html, attributes, computed styles), accessibility (role, name, state), React component stack with props and hook state, and a best-effort source location. Call this when the user asks about a UI element they selected in the browser with the UI Context bookmarklet.',
+        'Returns the live UI element the developer most recently selected in their browser (via the UI Context bookmarklet): its DOM (html, attributes, computed styles), accessibility (role/name/state), the React component stack — each frame with props, hook state, its source file, and an isUserComponent flag (true = the user\'s own code, false = a library/framework wrapper) — and the resolved source code at the selection. ALWAYS call this FIRST whenever the user refers to a selected, inspected, or pointed-at UI element or component while debugging a local app — e.g. "this", "this element/component/button", "the component I selected/picked", "why is this disabled/hidden", "what props/state does this have". Use the per-frame isUserComponent flags to focus on the user\'s component rather than wrappers.',
     },
     async () => ({ content: [{ type: 'text', text: await getLatestUiContextText() }] }),
   );

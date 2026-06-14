@@ -43,28 +43,35 @@ function stackString(dbg: unknown): string {
   return '';
 }
 
+/** Extract a source position from a single fiber (no walking). */
+export function sourceFromFiber(fiber: FiberLike | null | undefined): SourceLayer {
+  if (!fiber) return { available: false, reason: 'no fiber' };
+  // React <=18 dev: exact source on the fiber.
+  const ds = fiber._debugSource;
+  if (ds?.fileName) {
+    return { available: true, file: ds.fileName, line: ds.lineNumber ?? 0, column: ds.columnNumber ?? 0 };
+  }
+  // React 19 (and Next dev): parse the owner/creation stack for the first user frame.
+  const stack = stackString(fiber._debugStack);
+  if (stack) {
+    for (const raw of stack.split('\n')) {
+      const frame = parseFrame(raw);
+      if (frame && looksLikeSource(frame.file) && !SKIP_FILE.test(frame.file)) {
+        return { available: true, file: frame.file, line: frame.line, column: frame.column };
+      }
+    }
+  }
+  return { available: false, reason: 'no source on this fiber' };
+}
+
 export function captureSource(el: Element): SourceLayer {
   const key = fiberKey(el);
   if (!key) return { available: false, reason: 'no React fiber' };
 
   let fiber = (el as unknown as Record<string, FiberLike | null | undefined>)[key];
-
   while (fiber) {
-    // React <=18 dev: exact source on the fiber.
-    const ds = fiber._debugSource;
-    if (ds?.fileName) {
-      return { available: true, file: ds.fileName, line: ds.lineNumber ?? 0, column: ds.columnNumber ?? 0 };
-    }
-    // React 19 (and Next dev): parse the owner/creation stack for the first user frame.
-    const stack = stackString(fiber._debugStack);
-    if (stack) {
-      for (const raw of stack.split('\n')) {
-        const frame = parseFrame(raw);
-        if (frame && looksLikeSource(frame.file) && !SKIP_FILE.test(frame.file)) {
-          return { available: true, file: frame.file, line: frame.line, column: frame.column };
-        }
-      }
-    }
+    const s = sourceFromFiber(fiber);
+    if (s.available) return s;
     fiber = fiber.return as FiberLike | null | undefined;
   }
 
