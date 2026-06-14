@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { TraceMap, originalPositionFor, sourceContentFor } from '@jridgewell/trace-mapping';
+import { FlattenMap, originalPositionFor, sourceContentFor } from '@jridgewell/trace-mapping';
 import type { SourceLayer } from '@ui/shared';
 
 const WINDOW = 6; // lines of context each side
@@ -72,7 +72,8 @@ export interface OriginalPosition {
 /** Reverse-map a generated position to its original source via a source map. Pure. */
 export function traceToOriginal(rawMap: unknown, line: number, column: number): OriginalPosition | null {
   // trace-mapping wants 1-based line, 0-based column; stack columns are 1-based.
-  const tracer = new TraceMap(rawMap as ConstructorParameters<typeof TraceMap>[0]);
+  // FlattenMap handles both flat and sectioned (indexed) maps — Next 16/Turbopack emits sectioned.
+  const tracer = new FlattenMap(rawMap as ConstructorParameters<typeof FlattenMap>[0]);
   const orig = originalPositionFor(tracer, { line, column: Math.max(0, column - 1) });
   if (!orig.source || orig.line == null) return null;
   return {

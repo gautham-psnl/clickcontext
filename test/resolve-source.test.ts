@@ -36,6 +36,11 @@ describe('traceToOriginal', () => {
   it('returns null when nothing maps', () => {
     expect(traceToOriginal({ version: 3, sources: [], names: [], mappings: '' }, 9, 9)).toBeNull();
   });
+
+  it('handles sectioned (indexed) maps — Next 16 / Turbopack emits these', () => {
+    const sectioned = { version: 3, sections: [{ offset: { line: 0, column: 0 }, map: MAP }] };
+    expect(traceToOriginal(sectioned, 1, 1)).toMatchObject({ source: 'app/Events.tsx', line: 5 });
+  });
 });
 
 describe('resolveSource', () => {
