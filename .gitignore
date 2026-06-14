@@ -1,4 +1,5 @@
 .DS_Store
 node_modules/
+/dist/
 bookmarklet/dist/*
 !bookmarklet/dist/.gitkeep

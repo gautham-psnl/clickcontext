@@ -15,5 +15,5 @@
       "@ui/shared/*": ["shared/src/*"]
     }
   },
-  "include": ["shared", "daemon", "mcp", "bookmarklet", "test"]
+  "include": ["shared", "daemon", "mcp", "bookmarklet", "cli", "test"]
 }

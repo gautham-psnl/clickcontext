@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./token.mjs": "./src/token.mjs",
     "./*": "./src/*.ts"
   }
 }

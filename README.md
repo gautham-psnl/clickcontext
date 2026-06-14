@@ -4,29 +4,37 @@ Select a live UI element in a localhost app and ask your AI IDE about it — gro
 
 This is the **prototype**: a bookmarklet captures context and POSTs it to a local daemon; a stdio MCP server hands the latest capture to your IDE (and resolves the real source lines off disk). See `docs/superpowers/specs/` for the full design and roadmap.
 
-## Setup
+## Install
 
+The Node side ships as a single CLI, `ui-context`, with three subcommands: `daemon`, `mcp`, `bookmarklet`.
+
+**From npm** (once published):
 ```bash
-npm install
-npm run build:bookmarklet   # writes bookmarklet/dist/install.html
+claude mcp add ui-context -- npx -y ui-context mcp   # register the MCP with your IDE
+npx ui-context daemon                                # start the capture daemon (keep running)
+npx ui-context bookmarklet                           # print the bookmarklet URL
 ```
 
-1. Open `bookmarklet/dist/install.html` and drag the **UI Context** link to your bookmarks bar.
-2. Start the daemon (leave it running):
+**From source** (this repo, today):
+```bash
+npm install
+npm run build          # → dist/cli.js + dist/bookmarklet.browser.js
+npm link               # optional: puts `ui-context` on your PATH
+```
+Then, using `node dist/cli.js <cmd>` (or `ui-context <cmd>` if you linked):
+1. `ui-context bookmarklet` → copy the printed `javascript:` URL into a new bookmark (drag-install via `npm run build:bookmarklet` → `bookmarklet/dist/install.html` also works).
+2. `ui-context daemon` → leave it running.
+3. Register the MCP with your IDE (run it from the project whose source you want resolved, or set `UI_CONTEXT_PROJECT_ROOT`):
    ```bash
-   npm run daemon
+   claude mcp add ui-context -- node "$(pwd)/dist/cli.js" mcp
    ```
-3. Register the MCP server with your IDE. For Claude Code, from this repo root:
-   ```bash
-   claude mcp add ui-context -- npx -y tsx "$(pwd)/mcp/src/server.ts"
-   ```
-   Any MCP-capable IDE works — point it at the same command. Run it from the project whose source you want resolved, or set `UI_CONTEXT_PROJECT_ROOT` to that project's root.
+   Any MCP-capable IDE works — point it at the same command.
 
 ## Use
 
-1. On a running localhost app (a React **dev** build gives the richest context), click the **UI Context** bookmarklet.
-2. Click the element you care about. A `Captured ✓` toast lists the layers grabbed.
-3. In your IDE, ask: *"Why is this button disabled?"* The model calls `get_latest_ui_context` and reasons over the real data.
+1. On a running localhost app (a React **dev** build gives the richest context), run the **UI Context** bookmarklet.
+2. Click the element you care about. A `Captured ✓` toast lists the layers grabbed (it's also logged to the page console).
+3. In your IDE, ask: *"Why is this button disabled?"* The model calls `get_latest_ui_context` (compact) and reasons over the real data; it escalates to `get_latest_ui_context_full` only when it needs props/hooks/styles/HTML.
 
 ## What gets captured
 
