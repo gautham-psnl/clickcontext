@@ -34,10 +34,18 @@ describe('end-to-end loop', () => {
     });
     expect(res.status).toBe(200);
 
-    const toolOut = JSON.parse(await getLatestUiContextText());
-    expect(toolOut.status).toBe('ok');
-    expect(toolOut.context.meta.url).toBe('http://localhost:3000/cart');
-    expect(toolOut.context.component.stack[0].name).toBe('CheckoutButton');
-    expect(toolOut.context.source.file).toBe('/src/CheckoutButton.tsx');
+    const full = JSON.parse(await getLatestUiContextText(undefined, undefined, 'full'));
+    expect(full.status).toBe('ok');
+    expect(full.context.meta.url).toBe('http://localhost:3000/cart');
+    expect(full.context.component.stack[0].name).toBe('CheckoutButton');
+    expect(full.context.source.file).toBe('/src/CheckoutButton.tsx');
+
+    // Default (summary) gives the compact view: element + notable a11y state.
+    const summary = JSON.parse(await getLatestUiContextText());
+    expect(summary.status).toBe('ok');
+    expect(summary.element.tag).toBe('button');
+    expect(summary.element.state.disabled).toBe(true);
+    expect(summary.url).toBe('http://localhost:3000/cart');
+    expect(summary.html).toBeUndefined();
   });
 });
