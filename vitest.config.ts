@@ -14,5 +14,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts'],
+    // The daemon store + MCP tool share one on-disk capture file (a singleton,
+    // mirroring production's single daemon). Run test files sequentially so
+    // their afterEach cleanups don't race on that shared path.
+    fileParallelism: false,
   },
 });
