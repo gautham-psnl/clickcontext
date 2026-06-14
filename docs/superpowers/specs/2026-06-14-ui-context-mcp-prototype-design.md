@@ -198,10 +198,10 @@ A localhost listener can be hit by *any* page's JavaScript, not just our tooling
 |---|---|---|---|---|
 | **0** | fiber `_debugSource` / owner-stack parse → `file:line:col` | fuzzy, dev-only | none | **prototype** |
 | **1** | MCP server normalizes the captured path (strips `webpack-internal://`, `http://host`, `?t=` query, `./`), finds the file under the project root, and embeds the real source lines around the target | good (when the captured path is a source path, i.e. dev) | reads files under cwd / `UI_CONTEXT_PROJECT_ROOT` | **prototype** |
-| **1b** | for minified/prod positions: read `.map` files off disk + reverse-map (`@jridgewell/trace-mapping`) before the Tier-1 read | good, **bundler-agnostic** | needs `.map` files | later |
+| **1b** | for bundled-chunk positions (Next 16/Turbopack `_next/static/chunks/*.js`): fetch the chunk's source map (inline data-URI, `sourceMappingURL`, or `<chunk>.map`), reverse-map via `@jridgewell/trace-mapping` (`FlattenMap` — handles sectioned/indexed maps), then read original lines | good, **bundler-agnostic** | dev server reachable | **prototype** |
 | **2** | per-bundler dev-plugin injects exact `data-source-loc` at build time | **perfect** | **assisted** install + dev-server restart | later |
 
-Tier 1 resolution lives in the MCP server (not the daemon) because the MCP server is stdio-launched by the IDE, so its cwd is the repo root. It enriches `source` with `resolvedFile` + `code` (or `resolveError`) at read-time — see `mcp/src/resolve-source.ts`.
+Tier 1/1b resolution lives in the MCP server (not the daemon) because the MCP server is stdio-launched by the IDE, so its cwd is the repo root. It enriches `source` with `resolvedFile` + `resolvedLine` + `code` (or `resolveError`) at read-time — see `mcp/src/resolve-source.ts`. Verified live on a Next 16 / React 19 / Turbopack app: a captured chunk position resolved to `components/motion/Reveal.tsx:64` with real code.
 
 Tier 2 detail: on connection the MCP can **detect the bundler** (read `package.json`/config) and *offer* assisted setup — not silent file-editing — because auto-editing diverse config shapes (TS/JS, ESM/CJS, monorepos) is fragile and requires a dev-server restart. "Differs project to project" = both per-bundler *and* per-config-shape; the assisted installer carries a detection→strategy matrix and always asks consent.
 
