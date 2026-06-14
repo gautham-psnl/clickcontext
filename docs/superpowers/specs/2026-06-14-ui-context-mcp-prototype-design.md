@@ -24,7 +24,7 @@ If that loop feels good, everything else (extension, multi-IDE, perfect source m
 |---|---|---|
 | Product goal | Open-source, installable product | Sets the long-term bar; the prototype is the first rung |
 | Accessibility (Layer 2) | **JS-computed** via `dom-accessibility-api` | Faithful W3C accname/role; **no** `chrome.debugger` banner; works with DevTools open |
-| Source mapping (Layer 4) | **Progressive tiers** (see §8); prototype runs **Tier 0** only | Tier 0 needs zero project changes |
+| Source mapping (Layer 4) | **Tier 0 + Tier 1** (see §8): fiber/stack capture + server-side path normalization & source-line read | Real code lines reach the model, not just `file:line` |
 | Interaction loop | **IDE as cockpit** | Native to MCP's pull model; reuses the IDE's repo context; the model reasons, the tool only *returns* context |
 | Long-term transport | Always-on **daemon** exposing **MCP-over-HTTP** | One capture store, every MCP-capable IDE connects via one URL |
 | **Prototype** capture vehicle | **Bookmarklet** | Runs in page main-world (fiber accessible directly), zero install, fastest to a working loop |
@@ -196,9 +196,12 @@ A localhost listener can be hit by *any* page's JavaScript, not just our tooling
 
 | Tier | Mechanism | Accuracy | Setup | Phase |
 |---|---|---|---|---|
-| **0** | fiber `_debugSource` / owner-stack parse | fuzzy, dev-only | none | **prototype** |
-| **1** | daemon reads `.map` files off disk + reverse-maps (`@jridgewell/trace-mapping`); can return real source lines around the location | good, **bundler-agnostic** | needs project path | later |
+| **0** | fiber `_debugSource` / owner-stack parse → `file:line:col` | fuzzy, dev-only | none | **prototype** |
+| **1** | MCP server normalizes the captured path (strips `webpack-internal://`, `http://host`, `?t=` query, `./`), finds the file under the project root, and embeds the real source lines around the target | good (when the captured path is a source path, i.e. dev) | reads files under cwd / `UI_CONTEXT_PROJECT_ROOT` | **prototype** |
+| **1b** | for minified/prod positions: read `.map` files off disk + reverse-map (`@jridgewell/trace-mapping`) before the Tier-1 read | good, **bundler-agnostic** | needs `.map` files | later |
 | **2** | per-bundler dev-plugin injects exact `data-source-loc` at build time | **perfect** | **assisted** install + dev-server restart | later |
+
+Tier 1 resolution lives in the MCP server (not the daemon) because the MCP server is stdio-launched by the IDE, so its cwd is the repo root. It enriches `source` with `resolvedFile` + `code` (or `resolveError`) at read-time — see `mcp/src/resolve-source.ts`.
 
 Tier 2 detail: on connection the MCP can **detect the bundler** (read `package.json`/config) and *offer* assisted setup — not silent file-editing — because auto-editing diverse config shapes (TS/JS, ESM/CJS, monorepos) is fragile and requires a dev-server restart. "Differs project to project" = both per-bundler *and* per-config-shape; the assisted installer carries a detection→strategy matrix and always asks consent.
 

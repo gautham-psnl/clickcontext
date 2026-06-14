@@ -903,11 +903,15 @@ git commit -m "feat(daemon): entrypoint wires token + listen"
 
 ---
 
+> **AMENDMENT (2026-06-14): Tier 1 source resolution pulled into the prototype.**
+> Source-line resolution is added at the MCP layer (read-time, in the repo-rooted MCP process). This adds **Task 7a** (`mcp/src/resolve-source.ts` + `test/resolve-source.test.ts`) and **supersedes Task 7's `mcp/src/tool.ts`** with a version that enriches the `source` layer via `resolveSource`. `SourceLayer` gains optional `resolvedFile` / `code` / `resolveError` fields (additive — capture-side output unchanged). As-built reference: `mcp/src/resolve-source.ts`, `mcp/src/tool.ts`, `test/resolve-source.test.ts`, and the Tier-1 case in `test/mcp-tool.test.ts`. Spec §2/§8 updated to match.
+
 ## Task 7: MCP tool function
 
 **Files:**
-- Create: `mcp/src/tool.ts`
-- Test: `test/mcp-tool.test.ts`
+- Create: `mcp/src/tool.ts` (as-built: enriches `source` via `resolveSource`; see Amendment above)
+- Create: `mcp/src/resolve-source.ts` (Task 7a)
+- Test: `test/mcp-tool.test.ts`, `test/resolve-source.test.ts`
 
 - [ ] **Step 1: Write the failing test** — `test/mcp-tool.test.ts`
 
