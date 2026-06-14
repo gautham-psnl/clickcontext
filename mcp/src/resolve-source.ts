@@ -13,9 +13,11 @@ export interface ResolveOptions {
 export function normalizeSourcePath(raw: string): string {
   let p = raw.trim();
   p = p.replace(/[?#].*$/, ''); // ?t=123 / #hash
-  p = p.replace(/^webpack-internal:\/\/\/?\.?\/?/, ''); // webpack-internal:///./src -> src
+  p = p.replace(/^webpack-internal:\/\/\/?/, ''); // webpack-internal:/// -> (rest)
+  p = p.replace(/^turbopack:\/\/\/?/, ''); // turbopack:/// -> (rest)
   p = p.replace(/^file:\/\//, ''); // file:// URLs
   p = p.replace(/^https?:\/\/[^/]+/, ''); // http://host:port/src -> /src
+  p = p.replace(/^\([^)]*\)\//, ''); // (app-pages-browser)/ / (ssr)/ Turbopack/webpack group
   p = p.replace(/^\.\//, ''); // leading ./
   return p;
 }

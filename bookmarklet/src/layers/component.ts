@@ -2,10 +2,18 @@ import type { ComponentLayer, ComponentFrame, HookInfo } from '@ui/shared';
 import { safeSerialize } from '@ui/shared';
 
 const INTERNAL_NAMES = new Set([
+  // React / generic
+  'ErrorBoundary', 'LoadableComponent', 'Suspense', 'Fragment', 'StrictMode',
+  // Next.js app-router internals (Next 13–16, React 18/19)
   'InnerLayoutRouter', 'OuterLayoutRouter', 'RenderFromTemplateContext',
-  'ErrorBoundary', 'LoadableComponent', 'Suspense', 'Fragment',
   'HotReload', 'Router', 'AppRouter', 'ReactDevOverlay', 'RedirectBoundary',
-  'NotFoundBoundary', 'RouterReducerProvider', 'ServerRoot',
+  'RedirectErrorBoundary', 'NotFoundBoundary', 'RouterReducerProvider', 'ServerRoot',
+  'SegmentViewNode', 'SegmentViewStateNode', 'LayoutRouterContext', 'TemplateContext',
+  'HTTPAccessFallbackBoundary', 'HTTPAccessFallbackErrorBoundary', 'DevRootHTTPAccessFallbackBoundary',
+  'LoadingBoundary', 'MetadataBoundary', 'MetadataOutlet', 'OutletBoundary',
+  'InnerScrollAndFocusHandler', 'InnerScrollAndFocusHandlerOld', 'ScrollAndMaybeFocusHandler',
+  'SegmentStateProvider', 'NavigationPromisesContext', 'ViewTransition',
+  'ClientPageRoot', 'ClientSegmentRoot', 'PromiseQueueContext',
 ]);
 
 const MAX_FRAMES = 20;

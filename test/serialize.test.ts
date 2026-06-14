@@ -53,6 +53,14 @@ describe('safeSerialize', () => {
     expect(safeSerialize({ child: reactEl })).toEqual({ child: '[ReactElement: Foo]' });
   });
 
+  it('marks React 19 transitional elements (host + component types)', () => {
+    const componentEl = { $$typeof: Symbol.for('react.transitional.element'), type: function Bar() {} };
+    const hostEl = { $$typeof: Symbol.for('react.transitional.element'), type: 'span' };
+    expect(safeSerialize({ a: componentEl, b: hostEl })).toEqual({
+      a: '[ReactElement: Bar]', b: '[ReactElement: span]',
+    });
+  });
+
   it('handles bigint, symbol, undefined', () => {
     expect(safeSerialize({ a: 10n, b: Symbol('s'), c: undefined })).toEqual({
       a: '10n', b: '[Symbol: s]', c: '[undefined]',

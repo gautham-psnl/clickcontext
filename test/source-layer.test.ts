@@ -38,4 +38,24 @@ describe('Layer 4 source (Tier 0)', () => {
     expect(src.line).toBe(42);
     expect(src.column).toBe(7);
   });
+
+  it('parses a React 19 owner-stack Error with a Next app/ path (parens + skips framework)', () => {
+    document.body.innerHTML = `<button>Buy</button>`;
+    const btn = document.querySelector('button')!;
+    const err = new Error('react-stack-top-frame');
+    Object.defineProperty(err, 'stack', {
+      value: [
+        'Error: react-stack-top-frame',
+        '    at div (<anonymous>)',
+        '    at Hero (webpack-internal:///(app-pages-browser)/./app/[locale]/Hero.tsx:42:13)',
+        '    at LoadingBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:1:1)',
+      ].join('\n'),
+    });
+    (btn as any)['__reactFiber$x'] = { _debugStack: err, return: null };
+    const src = captureSource(btn);
+    expect(src.available).toBe(true);
+    expect(src.file).toContain('app/[locale]/Hero.tsx');
+    expect(src.line).toBe(42);
+    expect(src.column).toBe(13);
+  });
 });

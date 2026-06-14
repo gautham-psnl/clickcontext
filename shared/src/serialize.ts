@@ -19,7 +19,12 @@ function isDomNode(v: unknown): boolean {
 }
 
 function isReactElement(v: unknown): boolean {
-  return !!v && typeof v === 'object' && (v as { $$typeof?: symbol }).$$typeof === Symbol.for('react.element');
+  if (!v || typeof v !== 'object') return false;
+  const tag = (v as { $$typeof?: unknown }).$$typeof;
+  if (typeof tag !== 'symbol') return false;
+  // React <=18: 'react.element'; React 19: 'react.transitional.element'.
+  const desc = tag.description ?? '';
+  return desc === 'react.element' || desc === 'react.transitional.element';
 }
 
 export function safeSerialize(value: unknown, opts: Partial<SerializeOptions> = {}): unknown {

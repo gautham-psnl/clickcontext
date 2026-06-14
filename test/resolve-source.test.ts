@@ -11,6 +11,9 @@ describe('normalizeSourcePath', () => {
     expect(normalizeSourcePath('/src/App.tsx?t=12345')).toBe('/src/App.tsx');
     expect(normalizeSourcePath('http://localhost:3000/src/App.tsx')).toBe('/src/App.tsx');
     expect(normalizeSourcePath('./src/App.tsx')).toBe('src/App.tsx');
+    // Next 16 / Turbopack group segment
+    expect(normalizeSourcePath('webpack-internal:///(app-pages-browser)/./app/[locale]/Hero.tsx')).toBe('app/[locale]/Hero.tsx');
+    expect(normalizeSourcePath('turbopack:///(ssr)/./components/Cart.tsx')).toBe('components/Cart.tsx');
   });
 });
 

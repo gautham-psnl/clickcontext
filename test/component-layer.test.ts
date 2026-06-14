@@ -58,4 +58,18 @@ describe('Layer 3 React fiber', () => {
     ]);
     expect(comp.stack![2].hooks).toBeNull(); // App has no _debugHookTypes
   });
+
+  it('filters Next 16 / React 19 framework internals, keeping user components', () => {
+    document.body.innerHTML = `<button>Buy</button>`;
+    const btn = document.querySelector('button')!;
+    const internals = ['SegmentViewNode', 'LayoutRouterContext', 'HTTPAccessFallbackBoundary', 'LoadingBoundary', 'ScrollAndMaybeFocusHandler'];
+    const internalChain = internals.reduceRight<any>(
+      (ret, name) => ({ type: { name }, memoizedProps: {}, _debugHookTypes: null, memoizedState: null, return: ret }),
+      null,
+    );
+    const userFiber = { type: { name: 'Hero' }, memoizedProps: { title: 'hi' }, _debugHookTypes: null, memoizedState: null, return: internalChain };
+    (btn as any)['__reactFiber$z'] = userFiber;
+    const comp = captureComponent(btn);
+    expect(comp.stack!.map((f) => f.name)).toEqual(['Hero']);
+  });
 });
