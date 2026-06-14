@@ -14,7 +14,15 @@ const INTERNAL_NAMES = new Set([
   'InnerScrollAndFocusHandler', 'InnerScrollAndFocusHandlerOld', 'ScrollAndMaybeFocusHandler',
   'SegmentStateProvider', 'NavigationPromisesContext', 'ViewTransition',
   'ClientPageRoot', 'ClientSegmentRoot', 'PromiseQueueContext',
+  '__next_root_layout_boundary__', 'AppDevOverlay', 'AppDevOverlayErrorBoundary',
+  'ErrorBoundaryHandler', 'RootErrorBoundary',
 ]);
+
+// React Context providers in the ancestry are plumbing, not the user's components —
+// and they carry large value props. Names ending in "Context" are skipped wholesale.
+function isInternal(name: string): boolean {
+  return INTERNAL_NAMES.has(name) || name.endsWith('Context');
+}
 
 const MAX_FRAMES = 20;
 
@@ -65,7 +73,7 @@ export function captureComponent(el: Element): ComponentLayer {
 
   while (fiber && stack.length < MAX_FRAMES) {
     const name = componentName(fiber.type);
-    if (name && !INTERNAL_NAMES.has(name)) {
+    if (name && !isInternal(name)) {
       stack.push({
         name,
         props: safeSerialize(fiber.memoizedProps),

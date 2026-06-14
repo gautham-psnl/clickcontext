@@ -62,7 +62,7 @@ describe('Layer 3 React fiber', () => {
   it('filters Next 16 / React 19 framework internals, keeping user components', () => {
     document.body.innerHTML = `<button>Buy</button>`;
     const btn = document.querySelector('button')!;
-    const internals = ['SegmentViewNode', 'LayoutRouterContext', 'HTTPAccessFallbackBoundary', 'LoadingBoundary', 'ScrollAndMaybeFocusHandler'];
+    const internals = ['SegmentViewNode', 'LayoutRouterContext', 'AppRouterContext', 'GlobalLayoutRouterContext', 'HTTPAccessFallbackBoundary', 'LoadingBoundary', 'RootErrorBoundary', 'ScrollAndMaybeFocusHandler'];
     const internalChain = internals.reduceRight<any>(
       (ret, name) => ({ type: { name }, memoizedProps: {}, _debugHookTypes: null, memoizedState: null, return: ret }),
       null,
