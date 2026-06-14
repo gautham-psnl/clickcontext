@@ -12,7 +12,7 @@ export function buildServer(): McpServer {
       description:
         'Returns the most recently captured live UI element context: DOM (html, attributes, computed styles), accessibility (role, name, state), React component stack with props and hook state, and a best-effort source location. Call this when the user asks about a UI element they selected in the browser with the UI Context bookmarklet.',
     },
-    async () => ({ content: [{ type: 'text', text: getLatestUiContextText() }] }),
+    async () => ({ content: [{ type: 'text', text: await getLatestUiContextText() }] }),
   );
   return server;
 }

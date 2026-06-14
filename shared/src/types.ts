@@ -39,7 +39,8 @@ export interface SourceLayer {
   column?: number;
   reason?: string;
   resolvedFile?: string; // Tier 1: absolute path the server resolved to
-  code?: string; // Tier 1: actual source lines around `line`
+  resolvedLine?: number; // Tier 1b: original line after source-map resolution
+  code?: string; // Tier 1: actual source lines around the resolved line
   resolveError?: string; // Tier 1: why code couldn't be read
 }
 

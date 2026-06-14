@@ -10,6 +10,7 @@
     "build:bookmarklet": "node bookmarklet/build.mjs"
   },
   "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.25",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "dom-accessibility-api": "^0.7.0"
   },

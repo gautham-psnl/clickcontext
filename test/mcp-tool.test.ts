@@ -18,20 +18,20 @@ const ctx: UiContext = {
 };
 
 describe('getLatestUiContextText', () => {
-  it('returns a no_capture status when nothing is captured', () => {
-    const out = JSON.parse(getLatestUiContextText(path));
+  it('returns a no_capture status when nothing is captured', async () => {
+    const out = JSON.parse(await getLatestUiContextText(path));
     expect(out.status).toBe('no_capture');
     expect(out.message).toMatch(/bookmarklet/i);
   });
 
-  it('returns the captured context (unavailable source passes through untouched)', () => {
+  it('returns the captured context (unavailable source passes through untouched)', async () => {
     writeLatestCapture(ctx, path);
-    const out = JSON.parse(getLatestUiContextText(path));
+    const out = JSON.parse(await getLatestUiContextText(path));
     expect(out.status).toBe('ok');
     expect(out.context).toEqual(ctx);
   });
 
-  it('enriches the source layer with real code lines (Tier 1)', () => {
+  it('enriches the source layer with real code lines (Tier 1)', async () => {
     const root = mkdtempSync(join(tmpdir(), 'ui-ctx-tool-root-'));
     mkdirSync(join(root, 'src'), { recursive: true });
     writeFileSync(join(root, 'src/Foo.tsx'), Array.from({ length: 20 }, (_, i) => `row ${i + 1}`).join('\n'), 'utf8');
@@ -42,7 +42,7 @@ describe('getLatestUiContextText', () => {
     };
     writeLatestCapture(withSource, path);
     try {
-      const out = JSON.parse(getLatestUiContextText(path, root));
+      const out = JSON.parse(await getLatestUiContextText(path, root));
       expect(out.status).toBe('ok');
       expect(out.context.source.code).toMatch(/> +5 \| row 5/);
       expect(out.context.source.resolvedFile).toContain('Foo.tsx');

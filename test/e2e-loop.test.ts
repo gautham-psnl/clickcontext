@@ -34,7 +34,7 @@ describe('end-to-end loop', () => {
     });
     expect(res.status).toBe(200);
 
-    const toolOut = JSON.parse(getLatestUiContextText());
+    const toolOut = JSON.parse(await getLatestUiContextText());
     expect(toolOut.status).toBe('ok');
     expect(toolOut.context.meta.url).toBe('http://localhost:3000/cart');
     expect(toolOut.context.component.stack[0].name).toBe('CheckoutButton');
