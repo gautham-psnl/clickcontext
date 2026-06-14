@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { getLatestUiContextText } from './tool';
 
 export function buildServer(): McpServer {
-  const server = new McpServer({ name: 'ui-context', version: '0.1.0' });
+  const server = new McpServer({ name: 'clickcontext', version: '0.1.0' });
 
   // Compact summary — the default entry point. Cheap (~200 tokens) and usually
   // all that's needed: the resolved source file:line plus the element + user frames.

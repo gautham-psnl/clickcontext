@@ -5,8 +5,8 @@ import { rmSync, existsSync, readFileSync } from 'node:fs';
 import { ensureToken, tokenPath } from '@ui/shared/token.mjs';
 
 const home = join(tmpdir(), `ui-context-test-home-${process.pid}`);
-beforeEach(() => { process.env.UI_CONTEXT_HOME = home; });
-afterEach(() => { if (existsSync(home)) rmSync(home, { recursive: true, force: true }); delete process.env.UI_CONTEXT_HOME; });
+beforeEach(() => { process.env.CLICKCONTEXT_HOME = home; });
+afterEach(() => { if (existsSync(home)) rmSync(home, { recursive: true, force: true }); delete process.env.CLICKCONTEXT_HOME; });
 
 describe('ensureToken', () => {
   it('creates a token file and returns the token', () => {

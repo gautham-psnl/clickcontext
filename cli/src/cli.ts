@@ -7,12 +7,12 @@ import { startMcp } from '../../mcp/src/server';
 
 const TOKEN_PLACEHOLDER = '__UI_CONTEXT_TOKEN_PLACEHOLDER__';
 
-const USAGE = `ui-context <command>
+const USAGE = `clickcontext <command>
 
 Commands:
   daemon       Start the capture daemon (keep running while you work)
   mcp          Start the stdio MCP server
-                 register:  claude mcp add ui-context -- npx -y ui-context mcp
+                 register:  claude mcp add clickcontext -- npx -y clickcontext mcp
   bookmarklet  Print the bookmarklet javascript: URL (make a bookmark with it)
 `;
 

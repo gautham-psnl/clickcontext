@@ -96,7 +96,7 @@ function buildSummary(ctx: UiContext, root: string): Record<string, unknown> {
 
 export async function getLatestUiContextText(
   filePath?: string,
-  projectRoot: string = process.env.UI_CONTEXT_PROJECT_ROOT ?? process.cwd(),
+  projectRoot: string = process.env.CLICKCONTEXT_PROJECT_ROOT ?? process.cwd(),
   detail: Detail = 'summary',
 ): Promise<string> {
   const ctx = readLatestCapture(filePath);

@@ -1,11 +1,11 @@
 {
-  "name": "ui-context",
+  "name": "clickcontext",
   "version": "0.1.0",
   "description": "Select a live UI element in a localhost app and ask your AI IDE about it — grounded in real DOM, accessibility, React component stack, and source.",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "ui-context": "dist/cli.js"
+    "clickcontext": "dist/cli.js"
   },
   "files": [
     "dist",

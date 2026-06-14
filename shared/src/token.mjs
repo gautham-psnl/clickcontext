@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
 export function configDir() {
-  return process.env.UI_CONTEXT_HOME ?? join(homedir(), '.ui-context');
+  return process.env.CLICKCONTEXT_HOME ?? join(homedir(), '.clickcontext');
 }
 
 export function tokenPath() {

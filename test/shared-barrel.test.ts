@@ -5,6 +5,6 @@ describe('shared barrel', () => {
   it('exposes daemon constants', () => {
     expect(DAEMON_HOST).toBe('127.0.0.1');
     expect(DAEMON_PORT).toBe(7456);
-    expect(CAPTURE_TOKEN_HEADER).toBe('x-ui-context-token');
+    expect(CAPTURE_TOKEN_HEADER).toBe('x-clickcontext-token');
   });
 });

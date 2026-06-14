@@ -6,27 +6,27 @@ This is the **prototype**: a bookmarklet captures context and POSTs it to a loca
 
 ## Install
 
-The Node side ships as a single CLI, `ui-context`, with three subcommands: `daemon`, `mcp`, `bookmarklet`.
+The Node side ships as a single CLI, `clickcontext`, with three subcommands: `daemon`, `mcp`, `bookmarklet`.
 
 **From npm** (once published):
 ```bash
-claude mcp add ui-context -- npx -y ui-context mcp   # register the MCP with your IDE
-npx ui-context daemon                                # start the capture daemon (keep running)
-npx ui-context bookmarklet                           # print the bookmarklet URL
+claude mcp add clickcontext -- npx -y clickcontext mcp   # register the MCP with your IDE
+npx clickcontext daemon                                  # start the capture daemon (keep running)
+npx clickcontext bookmarklet                             # print the bookmarklet URL
 ```
 
 **From source** (this repo, today):
 ```bash
 npm install
 npm run build          # → dist/cli.js + dist/bookmarklet.browser.js
-npm link               # optional: puts `ui-context` on your PATH
+npm link               # optional: puts `clickcontext` on your PATH
 ```
-Then, using `node dist/cli.js <cmd>` (or `ui-context <cmd>` if you linked):
-1. `ui-context bookmarklet` → copy the printed `javascript:` URL into a new bookmark (drag-install via `npm run build:bookmarklet` → `bookmarklet/dist/install.html` also works).
-2. `ui-context daemon` → leave it running.
-3. Register the MCP with your IDE (run it from the project whose source you want resolved, or set `UI_CONTEXT_PROJECT_ROOT`):
+Then, using `node dist/cli.js <cmd>` (or `clickcontext <cmd>` if you linked):
+1. `clickcontext bookmarklet` → copy the printed `javascript:` URL into a new bookmark (drag-install via `npm run build:bookmarklet` → `bookmarklet/dist/install.html` also works).
+2. `clickcontext daemon` → leave it running.
+3. Register the MCP with your IDE (run it from the project whose source you want resolved, or set `CLICKCONTEXT_PROJECT_ROOT`):
    ```bash
-   claude mcp add ui-context -- node "$(pwd)/dist/cli.js" mcp
+   claude mcp add clickcontext -- node "$(pwd)/dist/cli.js" mcp
    ```
    Any MCP-capable IDE works — point it at the same command.
 
@@ -50,7 +50,7 @@ Absent layers are reported in `meta.missing` so the model knows what it does *no
 ```
 bookmarklet (page main-world) --POST /capture--> daemon (127.0.0.1:7456, in-memory + file mirror)
                                                      |
-                                          $TMPDIR/ui-context-latest.json
+                                          $TMPDIR/clickcontext-latest.json
                                                      |
                                           mcp server (stdio, repo-rooted) --get_latest_ui_context--> IDE
 ```
@@ -63,14 +63,14 @@ bookmarklet (page main-world) --POST /capture--> daemon (127.0.0.1:7456, in-memo
 ## Develop
 
 ```bash
-npm test                  # full suite (48 tests)
-npm run daemon            # start the capture daemon
-npm run build:bookmarklet # rebuild the bookmarklet after changes
+npm test                  # full suite
+npm run build             # → dist/ (cli + browser bundle)
+npm run daemon            # start the capture daemon (tsx, dev)
 ```
 
 ## Security
 
-The daemon binds `127.0.0.1` only and gates `POST /capture` with a per-install token (in `~/.ui-context/token`, baked into the bookmarklet at build time). Captured HTML/props are treated as untrusted text — they are data for the model, never executed.
+The daemon binds `127.0.0.1` only and gates `POST /capture` with a per-install token (in `~/.clickcontext/token`, injected into the bookmarklet by the CLI at runtime). Captured HTML/props are treated as untrusted text — they are data for the model, never executed.
 
 ## Status & roadmap
 
