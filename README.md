@@ -1,0 +1,69 @@
+# UI Context MCP (prototype)
+
+Select a live UI element in a localhost app and ask your AI IDE about it — grounded in the element's real DOM, accessibility data, React component stack, props, and hook state.
+
+This is the **prototype**: a bookmarklet captures context and POSTs it to a local daemon; a stdio MCP server hands the latest capture to your IDE (and resolves the real source lines off disk). See `docs/superpowers/specs/` for the full design and roadmap.
+
+## Setup
+
+```bash
+npm install
+npm run build:bookmarklet   # writes bookmarklet/dist/install.html
+```
+
+1. Open `bookmarklet/dist/install.html` and drag the **UI Context** link to your bookmarks bar.
+2. Start the daemon (leave it running):
+   ```bash
+   npm run daemon
+   ```
+3. Register the MCP server with your IDE. For Claude Code, from this repo root:
+   ```bash
+   claude mcp add ui-context -- npx -y tsx "$(pwd)/mcp/src/server.ts"
+   ```
+   Any MCP-capable IDE works — point it at the same command. Run it from the project whose source you want resolved, or set `UI_CONTEXT_PROJECT_ROOT` to that project's root.
+
+## Use
+
+1. On a running localhost app (a React **dev** build gives the richest context), click the **UI Context** bookmarklet.
+2. Click the element you care about. A `Captured ✓` toast lists the layers grabbed.
+3. In your IDE, ask: *"Why is this button disabled?"* The model calls `get_latest_ui_context` and reasons over the real data.
+
+## What gets captured
+
+- **DOM** — html, attributes, computed styles, dom path, bounding box (always)
+- **Accessibility** — role, computed name (W3C accname via `dom-accessibility-api`), disabled/aria state (always)
+- **React component stack** — component names, safe-serialized props, hook types + values (when React is present)
+- **Source** — `file:line` best-effort (Tier 0), enriched server-side with the real code lines around the target (Tier 1, when the file is found under the project root)
+
+Absent layers are reported in `meta.missing` so the model knows what it does *not* have.
+
+## Architecture
+
+```
+bookmarklet (page main-world) --POST /capture--> daemon (127.0.0.1:7456, in-memory + file mirror)
+                                                     |
+                                          $TMPDIR/ui-context-latest.json
+                                                     |
+                                          mcp server (stdio, repo-rooted) --get_latest_ui_context--> IDE
+```
+
+- **`shared/`** — `UiContext` types, constants, and the safe serializer.
+- **`daemon/`** — token-gated HTTP server; stores the latest capture and mirrors it to disk.
+- **`mcp/`** — stdio MCP server exposing `get_latest_ui_context`; resolves source lines (`resolve-source.ts`).
+- **`bookmarklet/`** — picker overlay + 4 capture layers, bundled by esbuild into a `javascript:` URL.
+
+## Develop
+
+```bash
+npm test                  # full suite (48 tests)
+npm run daemon            # start the capture daemon
+npm run build:bookmarklet # rebuild the bookmarklet after changes
+```
+
+## Security
+
+The daemon binds `127.0.0.1` only and gates `POST /capture` with a per-install token (in `~/.ui-context/token`, baked into the bookmarklet at build time). Captured HTML/props are treated as untrusted text — they are data for the model, never executed.
+
+## Status & roadmap
+
+Prototype scope is the capture → daemon → IDE loop with Tier 0 + Tier 1 source. Deferred (see the spec): Chrome extension with a hotkey, MCP-over-HTTP single-process daemon, plug-and-play tray app with IDE auto-registration, `.map` reverse-mapping for minified builds, an assisted per-bundler dev-plugin (Tier 2), and Vue/Firefox/Safari support.
