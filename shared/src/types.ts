@@ -38,6 +38,9 @@ export interface SourceLayer {
   line?: number;
   column?: number;
   reason?: string;
+  resolvedFile?: string; // Tier 1: absolute path the server resolved to
+  code?: string; // Tier 1: actual source lines around `line`
+  resolveError?: string; // Tier 1: why code couldn't be read
 }
 
 export interface MissingLayer {
