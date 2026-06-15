@@ -1,77 +1,112 @@
-# UI Context MCP (prototype)
+# clickcontext
 
-Select a live UI element in a localhost app and ask your AI IDE about it — grounded in the element's real DOM, accessibility data, React component stack, props, and hook state.
+Click a UI element in your localhost app — ask your AI IDE why it looks the way it does.
 
-This is the **prototype**: a bookmarklet captures context and POSTs it to a local daemon; a stdio MCP server hands the latest capture to your IDE (and resolves the real source lines off disk). See `docs/superpowers/specs/` for the full design and roadmap.
+Captures the real DOM, accessibility tree, React component stack (props + hook state), and source file:line of whatever you click. Sends it to a local MCP server your IDE reads automatically.
+
+```bash
+npx clickcontext init      # patch your app's dev config (Next.js / Vite)
+npx clickcontext daemon    # start the capture daemon (keep running)
+```
+Then open **http://127.0.0.1:7456/install** → drag the bookmarklet to your bookmarks bar → click any element → ask your IDE.
+
+---
 
 ## Install
 
-The Node side ships as a single CLI, `clickcontext`, with three subcommands: `daemon`, `mcp`, `bookmarklet`.
+**1. Register the MCP with your IDE** (once per machine):
 
-**From npm** (once published):
 ```bash
-claude mcp add clickcontext -- npx -y clickcontext mcp   # register the MCP with your IDE
-npx clickcontext daemon                                  # start the capture daemon (keep running)
-npx clickcontext bookmarklet                             # print the bookmarklet URL
+# Claude Code
+claude mcp add clickcontext -- npx -y clickcontext mcp
+
+# Any other MCP-capable IDE — point it at the same command:
+npx -y clickcontext mcp
 ```
 
-**From source** (this repo, today):
+**2. Patch your app** (once per project — adds a dev-only source loader):
+
 ```bash
-npm install
-npm run build          # → dist/cli.js + dist/bookmarklet.browser.js
-npm link               # optional: puts `clickcontext` on your PATH
+cd your-app
+npx clickcontext init
 ```
-Then, using `node dist/cli.js <cmd>` (or `clickcontext <cmd>` if you linked):
-1. `clickcontext bookmarklet` → copy the printed `javascript:` URL into a new bookmark (drag-install via `npm run build:bookmarklet` → `bookmarklet/dist/install.html` also works).
-2. `clickcontext daemon` → leave it running.
-3. Register the MCP with your IDE (run it from the project whose source you want resolved, or set `CLICKCONTEXT_PROJECT_ROOT`):
-   ```bash
-   claude mcp add clickcontext -- node "$(pwd)/dist/cli.js" mcp
-   ```
-   Any MCP-capable IDE works — point it at the same command.
+
+Detects Next.js and Vite. Installs the right loader and patches your config. Restart your dev server after.
+
+> Skip this step if you just want to try it — you'll still get DOM, accessibility, and React component data. Source resolution just won't have exact file:line.
+
+**3. Start the daemon** (every session):
+
+```bash
+npx clickcontext daemon
+```
+
+**4. Install the bookmarklet** (once):
+
+Open **http://127.0.0.1:7456/install** in your browser and drag the button to your bookmarks bar.
+
+---
 
 ## Use
 
-1. On a running localhost app (a React **dev** build gives the richest context), run the **UI Context** bookmarklet.
-2. Click the element you care about. A `Captured ✓` toast lists the layers grabbed (it's also logged to the page console).
-3. In your IDE, ask: *"Why is this button disabled?"* The model calls `get_latest_ui_context` (compact) and reasons over the real data; it escalates to `get_latest_ui_context_full` only when it needs props/hooks/styles/HTML.
+1. Open your localhost app in the browser.
+2. Click the **clickcontext** bookmark. A picker activates — hover to see component names.
+3. Click the element you want to inspect. A `Captured ✓` toast confirms it.
+4. In your IDE, ask anything: *"Why is this button disabled?"*, *"What component renders this?"*, *"Where is this defined?"*
+
+The IDE calls `get_latest_ui_context` automatically and reasons over the real data.
+
+---
 
 ## What gets captured
 
-- **DOM** — html, attributes, computed styles, dom path, bounding box (always)
-- **Accessibility** — role, computed name (W3C accname via `dom-accessibility-api`), disabled/aria state (always)
-- **React component stack** — component names, safe-serialized props, hook types + values (when React is present)
-- **Source** — `file:line` best-effort (Tier 0), enriched server-side with the real code lines around the target (Tier 1, when the file is found under the project root)
+| Layer | Contents |
+|---|---|
+| **DOM** | HTML, attributes, computed styles, bounding box |
+| **Accessibility** | ARIA role, computed name (W3C), disabled state |
+| **React** | Component stack, props, hook types + values |
+| **Source** | File path, line number, surrounding code lines |
 
-Absent layers are reported in `meta.missing` so the model knows what it does *not* have.
+React layers require a React dev build. Source layer is richest when `clickcontext init` has been run.
+
+---
+
+## Requirements
+
+- Node.js 18+
+- A React app running in dev mode (Next.js, Vite, CRA, etc.)
+- An MCP-capable IDE (Claude Code, Cursor, Zed, etc.)
+
+---
 
 ## Architecture
 
 ```
-bookmarklet (page main-world) --POST /capture--> daemon (127.0.0.1:7456, in-memory + file mirror)
-                                                     |
-                                          $TMPDIR/clickcontext-latest.json
-                                                     |
-                                          mcp server (stdio, repo-rooted) --get_latest_ui_context--> IDE
+browser bookmarklet  →  POST /capture  →  daemon (127.0.0.1:7456)
+                                               ↓
+                                    $TMPDIR/clickcontext-latest.json
+                                               ↓
+                              MCP server (stdio)  →  IDE
 ```
 
-- **`shared/`** — `UiContext` types, constants, and the safe serializer.
-- **`daemon/`** — token-gated HTTP server; stores the latest capture and mirrors it to disk.
-- **`mcp/`** — stdio MCP server exposing `get_latest_ui_context`; resolves source lines (`resolve-source.ts`).
-- **`bookmarklet/`** — picker overlay + 4 capture layers, bundled by esbuild into a `javascript:` URL.
+The daemon and MCP server are both started by the `clickcontext` CLI. The bookmarklet runs entirely in your browser's main world (no extension required) and communicates with the daemon over localhost using a per-install token stored in `~/.clickcontext/token`.
 
-## Develop
-
-```bash
-npm test                  # full suite
-npm run build             # → dist/ (cli + browser bundle)
-npm run daemon            # start the capture daemon (tsx, dev)
-```
+---
 
 ## Security
 
-The daemon binds `127.0.0.1` only and gates `POST /capture` with a per-install token (in `~/.clickcontext/token`, injected into the bookmarklet by the CLI at runtime). Captured HTML/props are treated as untrusted text — they are data for the model, never executed.
+The daemon binds to `127.0.0.1` only and requires the per-install token on every capture request. The token is injected into the bookmarklet at runtime by the CLI — it never leaves your machine. Captured HTML and props are treated as plain text data, never executed.
 
-## Status & roadmap
+---
 
-Prototype scope is the capture → daemon → IDE loop with Tier 0 + Tier 1 source. Deferred (see the spec): Chrome extension with a hotkey, MCP-over-HTTP single-process daemon, plug-and-play tray app with IDE auto-registration, `.map` reverse-mapping for minified builds, an assisted per-bundler dev-plugin (Tier 2), and Vue/Firefox/Safari support.
+## Contributing
+
+```bash
+git clone https://github.com/gautham-psnl/clickcontext.git
+cd clickcontext
+npm install
+npm run build   # → dist/cli.js + dist/bookmarklet.browser.js
+npm test        # 70 tests
+```
+
+Issues and PRs welcome at [github.com/gautham-psnl/clickcontext](https://github.com/gautham-psnl/clickcontext).
