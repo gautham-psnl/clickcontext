@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ensureToken } from '@ui/shared/token.mjs';
 import { startDaemon } from '../../daemon/src/index';
@@ -56,12 +56,4 @@ export async function runCli(argv: string[]): Promise<void> {
       process.stderr.write(`Unknown command: ${argv[0]}\n\n${USAGE}`);
       process.exitCode = 1;
   }
-}
-
-const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (invokedDirectly) {
-  runCli(process.argv.slice(2)).catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
 }

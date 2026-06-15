@@ -22,7 +22,7 @@ await build({
 // 2) Node CLI — fully self-contained: bundles daemon + mcp + shared + all npm deps.
 //    Bundling the MCP SDK keeps only the stdio transport (tree-shakes express/hono/http).
 await build({
-  entryPoints: [join(root, 'cli/src/cli.ts')],
+  entryPoints: [join(root, 'cli/src/entry.ts')],
   outfile: join(dist, 'cli.js'),
   bundle: true,
   platform: 'node',
