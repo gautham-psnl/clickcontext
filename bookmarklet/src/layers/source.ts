@@ -9,8 +9,49 @@ interface FiberLike {
 // Frames that belong to the framework, not the user's code.
 const SKIP_FILE = /node_modules|[\\/]next[\\/]dist[\\/]|react-dom|react-server|webpack[\\/]runtime|[\\/]react[\\/]cjs[\\/]/;
 
+// Build-time source attributes, in priority order. `data-clickcontext-source` is our
+// own loader; `data-locatorjs` is emitted by @locator/webpack-loader (path mode) — we
+// read it too so an existing LocatorJS setup lights up clickcontext for free.
+const BUILD_ATTRS = ['data-clickcontext-source', 'data-locatorjs'] as const;
+const BUILD_ATTR_SELECTOR = BUILD_ATTRS.map((a) => `[${a}]`).join(', ');
+
 function fiberKey(el: Element): string | undefined {
   return Object.keys(el).find((k) => k.startsWith('__reactFiber$'));
+}
+
+/**
+ * Parse a build-time source attribute value of the form `/abs/path:line:column`.
+ * Splits on the last two colons so Windows drive paths (C:\…) survive.
+ */
+function parseSourceAttr(value: string | null): { file: string; line: number; column: number } | null {
+  if (!value) return null;
+  const lastColon = value.lastIndexOf(':');
+  if (lastColon === -1) return null;
+  const prevColon = value.lastIndexOf(':', lastColon - 1);
+  if (prevColon === -1) return null;
+  const file = value.slice(0, prevColon);
+  const line = parseInt(value.slice(prevColon + 1, lastColon), 10);
+  const column = parseInt(value.slice(lastColon + 1), 10);
+  if (!file || Number.isNaN(line) || Number.isNaN(column)) return null;
+  return { file, line, column };
+}
+
+/**
+ * Tier 0+ (build attribute): the nearest ancestor carrying a build-time source
+ * attribute. Deterministic and bundler-proof — no source maps, no fiber debug data.
+ * Requires the project to run a source-injecting loader in dev.
+ */
+export function captureBuildAttr(el: Element): SourceLayer {
+  const found = el.closest(BUILD_ATTR_SELECTOR);
+  if (found) {
+    for (const attr of BUILD_ATTRS) {
+      const parsed = parseSourceAttr(found.getAttribute(attr));
+      if (parsed) {
+        return { available: true, file: parsed.file, line: parsed.line, column: parsed.column, provenance: 'build-attr' };
+      }
+    }
+  }
+  return { available: false, reason: 'no build-time source attribute' };
 }
 
 function looksLikeSource(file: string): boolean {
@@ -49,7 +90,7 @@ export function sourceFromFiber(fiber: FiberLike | null | undefined): SourceLaye
   // React <=18 dev: exact source on the fiber.
   const ds = fiber._debugSource;
   if (ds?.fileName) {
-    return { available: true, file: ds.fileName, line: ds.lineNumber ?? 0, column: ds.columnNumber ?? 0 };
+    return { available: true, file: ds.fileName, line: ds.lineNumber ?? 0, column: ds.columnNumber ?? 0, provenance: 'fiber-debug-source' };
   }
   // React 19 (and Next dev): parse the owner/creation stack for the first user frame.
   const stack = stackString(fiber._debugStack);
@@ -57,7 +98,7 @@ export function sourceFromFiber(fiber: FiberLike | null | undefined): SourceLaye
     for (const raw of stack.split('\n')) {
       const frame = parseFrame(raw);
       if (frame && looksLikeSource(frame.file) && !SKIP_FILE.test(frame.file)) {
-        return { available: true, file: frame.file, line: frame.line, column: frame.column };
+        return { available: true, file: frame.file, line: frame.line, column: frame.column, provenance: 'owner-stack' };
       }
     }
   }
@@ -65,8 +106,14 @@ export function sourceFromFiber(fiber: FiberLike | null | undefined): SourceLaye
 }
 
 export function captureSource(el: Element): SourceLayer {
+  // Tier 0+ : build-time source attribute on the clicked element or nearest ancestor.
+  // Deterministic and bundler-proof — preferred over the best-effort fiber tiers.
+  const built = captureBuildAttr(el);
+  if (built.available) return built;
+
+  // Tier 0 : React fiber debug source / owner stack (best-effort; bundlers may strip it).
   const key = fiberKey(el);
-  if (!key) return { available: false, reason: 'no React fiber' };
+  if (!key) return { available: false, reason: 'no React fiber and no build-time source attribute' };
 
   let fiber = (el as unknown as Record<string, FiberLike | null | undefined>)[key];
   while (fiber) {
@@ -75,5 +122,5 @@ export function captureSource(el: Element): SourceLayer {
     fiber = fiber.return as FiberLike | null | undefined;
   }
 
-  return { available: false, reason: 'no _debugSource and no user frame in _debugStack (Tier 0; build may strip source info)' };
+  return { available: false, reason: 'no build-time source attribute, no _debugSource, and no user frame in _debugStack' };
 }

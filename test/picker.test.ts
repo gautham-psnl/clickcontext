@@ -3,10 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { startPicker } from '../bookmarklet/src/picker';
 
 describe('startPicker', () => {
-  it('mounts an overlay and removes it on cancel', () => {
+  it('mounts overlay + label chip and removes both on cancel', () => {
     const before = document.body.childElementCount;
     const handle = startPicker(() => {});
-    expect(document.body.childElementCount).toBe(before + 1);
+    expect(document.body.childElementCount).toBe(before + 2); // box + chip
     handle.cancel();
     expect(document.body.childElementCount).toBe(before);
   });

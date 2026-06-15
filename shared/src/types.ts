@@ -39,6 +39,10 @@ export interface SourceLayer {
   file?: string;
   line?: number;
   column?: number;
+  // How the captured position was obtained (client-side). 'build-attr' is a
+  // build-time source attribute (deterministic, bundler-proof); the fiber tiers
+  // are best-effort and may be stripped by the bundler.
+  provenance?: 'build-attr' | 'fiber-debug-source' | 'owner-stack';
   reason?: string;
   resolvedFile?: string; // Tier 1: absolute path the server resolved to
   resolvedLine?: number; // Tier 1b: original line after source-map resolution

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { captureSource } from '../bookmarklet/src/layers/source';
+import { captureSource, captureBuildAttr } from '../bookmarklet/src/layers/source';
 
 describe('Layer 4 source (Tier 0)', () => {
   it('reports unavailable without a fiber', () => {
@@ -17,6 +17,7 @@ describe('Layer 4 source (Tier 0)', () => {
     };
     expect(captureSource(btn)).toEqual({
       available: true, file: '/src/components/CheckoutButton.tsx', line: 23, column: 5,
+      provenance: 'fiber-debug-source',
     });
   });
 
@@ -57,5 +58,44 @@ describe('Layer 4 source (Tier 0)', () => {
     expect(src.file).toContain('app/[locale]/Hero.tsx');
     expect(src.line).toBe(42);
     expect(src.column).toBe(13);
+  });
+});
+
+describe('Layer 4 source (Tier 0+ build attribute)', () => {
+  it('reads data-clickcontext-source off the clicked element', () => {
+    document.body.innerHTML = `<button data-clickcontext-source="/Users/me/app/components/Toolbar.tsx:42:6">Save</button>`;
+    expect(captureSource(document.querySelector('button')!)).toEqual({
+      available: true, file: '/Users/me/app/components/Toolbar.tsx', line: 42, column: 6,
+      provenance: 'build-attr',
+    });
+  });
+
+  it('reads data-locatorjs (path mode) from the nearest ancestor', () => {
+    document.body.innerHTML = `<div data-locatorjs="/Users/me/app/Card.tsx:10:2"><span><b>x</b></span></div>`;
+    const src = captureSource(document.querySelector('b')!);
+    expect(src).toEqual({ available: true, file: '/Users/me/app/Card.tsx', line: 10, column: 2, provenance: 'build-attr' });
+  });
+
+  it('prefers the build attribute over fiber debug source', () => {
+    document.body.innerHTML = `<button data-clickcontext-source="/real/Button.tsx:5:1">Buy</button>`;
+    const btn = document.querySelector('button')!;
+    (btn as any)['__reactFiber$x'] = {
+      _debugSource: { fileName: '/wrong/Other.tsx', lineNumber: 99, columnNumber: 0 },
+      return: null,
+    };
+    expect(captureSource(btn).file).toBe('/real/Button.tsx');
+    expect(captureSource(btn).provenance).toBe('build-attr');
+  });
+
+  it('survives Windows drive paths (splits on the last two colons)', () => {
+    document.body.innerHTML = `<button data-clickcontext-source="C:\\app\\Button.tsx:7:3">Buy</button>`;
+    expect(captureBuildAttr(document.querySelector('button')!)).toEqual({
+      available: true, file: 'C:\\app\\Button.tsx', line: 7, column: 3, provenance: 'build-attr',
+    });
+  });
+
+  it('reports unavailable when no build attribute is present', () => {
+    document.body.innerHTML = `<button>Buy</button>`;
+    expect(captureBuildAttr(document.querySelector('button')!).available).toBe(false);
   });
 });

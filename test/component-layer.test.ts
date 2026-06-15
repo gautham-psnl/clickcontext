@@ -59,7 +59,7 @@ describe('Layer 3 React fiber', () => {
     ]);
     expect(comp.stack![2].hooks).toBeNull(); // App has no _debugHookTypes
     // per-frame source captured from the fiber (resolved server-side later)
-    expect(checkout.source).toEqual({ available: true, file: '/src/CheckoutButton.tsx', line: 12, column: 3 });
+    expect(checkout.source).toEqual({ available: true, file: '/src/CheckoutButton.tsx', line: 12, column: 3, provenance: 'fiber-debug-source' });
   });
 
   it('filters Next 16 / React 19 framework internals, keeping user components', () => {
