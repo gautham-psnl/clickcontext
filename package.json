@@ -1,6 +1,6 @@
 {
   "name": "clickcontext",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Select a live UI element in a localhost app and ask your AI IDE about it — grounded in real DOM, accessibility, React component stack, and source.",
   "type": "module",
   "license": "MIT",
@@ -13,8 +13,16 @@
     "url": "https://github.com/gautham-psnl/clickcontext/issues"
   },
   "keywords": [
-    "mcp", "devtools", "react", "source-map", "component-inspector",
-    "ai-ide", "bookmarklet", "accessibility", "dom", "clickcontext"
+    "mcp",
+    "devtools",
+    "react",
+    "source-map",
+    "component-inspector",
+    "ai-ide",
+    "bookmarklet",
+    "accessibility",
+    "dom",
+    "clickcontext"
   ],
   "bin": {
     "clickcontext": "dist/cli.js"
@@ -27,7 +35,9 @@
   "engines": {
     "node": ">=18"
   },
-  "workspaces": ["shared"],
+  "workspaces": [
+    "shared"
+  ],
   "scripts": {
     "build": "node build.mjs",
     "build:bookmarklet": "node bookmarklet/build.mjs",
