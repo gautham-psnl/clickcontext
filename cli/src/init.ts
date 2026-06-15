@@ -183,6 +183,20 @@ function findConfigOpenBrace(src: string): number | null {
   return null;
 }
 
+/**
+ * Insert `block` just before the object's closing brace at `closeBrace`.
+ * Adds a comma separator unless the preceding property already ends with one
+ * (or the object is empty) — without this, single-line / no-trailing-comma
+ * configs like `{ reactStrictMode: true }` fuse into invalid JS.
+ */
+function insertBeforeClose(src: string, closeBrace: number, block: string): string {
+  let i = closeBrace - 1;
+  while (i >= 0 && /\s/.test(src[i])) i--;
+  const prevChar = src[i];
+  const sep = prevChar === ',' || prevChar === '{' ? '' : ',';
+  return src.slice(0, i + 1) + sep + '\n' + block + '\n' + src.slice(closeBrace);
+}
+
 export function patchNextConfig(
   content: string,
   runner: NextRunner = 'turbopack',
@@ -214,7 +228,7 @@ export function patchNextConfig(
     const closeBrace = matchingBrace(out, openBrace);
     if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 
-    out = out.slice(0, closeBrace) + WEBPACK_BLOCK + '\n' + out.slice(closeBrace);
+    out = insertBeforeClose(out, closeBrace, WEBPACK_BLOCK);
     return { result: out, alreadyDone: false };
   }
 
@@ -237,7 +251,7 @@ export function patchNextConfig(
   const closeBrace = matchingBrace(out, openBrace);
   if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 
-  out = out.slice(0, closeBrace) + block + '\n' + out.slice(closeBrace);
+  out = insertBeforeClose(out, closeBrace, block);
   return { result: out, alreadyDone: false };
 }
 

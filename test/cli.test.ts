@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { transformSync } from 'esbuild';
 import { bookmarkletUrl } from '../cli/src/cli';
 import { patchNextConfig, detectNextRunner } from '../cli/src/init';
+
+/** Assert the patched output is still syntactically valid JS/TS — the failure
+ *  mode unit-level "contains loader string" assertions miss. */
+function expectValidJs(code: string, loader: 'ts' | 'js' = 'ts') {
+  expect(() => transformSync(code, { loader, format: 'esm' })).not.toThrow();
+}
 
 describe('patchNextConfig', () => {
   const ESM_SEMICOLON = `import type { NextConfig } from "next";
@@ -199,6 +206,70 @@ module.exports = withPlugins([[require('@next/bundle-analyzer')({ enabled: false
     const { result, error } = patchNextConfig(src);
     expect(error).toBeUndefined();
     expect(result).toContain('@locator/webpack-loader');
+  });
+
+  // --- output validity: single-line / no-trailing-comma objects (regression) ---
+  // These previously fused the injected block onto the last property without a
+  // comma, producing invalid JS that silently broke the user's dev server.
+  it('produces valid JS for a single-line config object', () => {
+    const src = `const nextConfig = { reactStrictMode: true };
+export default nextConfig;
+`;
+    for (const runner of ['turbopack', 'experimental-turbo', 'webpack'] as const) {
+      const { result, error } = patchNextConfig(src, runner);
+      expect(error).toBeUndefined();
+      expectValidJs(result);
+    }
+  });
+
+  it('produces valid JS for `as const` config', () => {
+    const src = `const nextConfig = { reactStrictMode: true } as const;
+export default nextConfig;
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expectValidJs(result);
+  });
+
+  it('produces valid JS for parenthesized default export', () => {
+    const src = `const nextConfig = { reactStrictMode: true };
+export default (nextConfig);
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expectValidJs(result);
+  });
+
+  it('produces valid JS when const is declared after module.exports', () => {
+    const src = `module.exports = withSentryConfig(nextConfig, {});
+const nextConfig = { reactStrictMode: true };
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expectValidJs(result, 'js');
+  });
+
+  it('all standard fixtures produce valid JS, not just the loader string', () => {
+    for (const [src, loader] of [
+      [ESM_SEMICOLON, 'ts'], [CJS_SEMICOLON, 'js'], [CJS_NO_SEMICOLON, 'js'],
+    ] as const) {
+      for (const runner of ['turbopack', 'experimental-turbo', 'webpack'] as const) {
+        const { result, error } = patchNextConfig(src, runner);
+        if (error) continue; // graceful bail is acceptable
+        expectValidJs(result, loader);
+      }
+    }
+  });
+
+  // Function-form configs can't be patched by object insertion — must bail gracefully.
+  it('gracefully errors on function-form config (no object literal to patch)', () => {
+    const src = `export default async () => {
+  return { reactStrictMode: true };
+};
+`;
+    const { error, result } = patchNextConfig(src);
+    expect(error).toMatch(/locate|config object/);
+    expect(result).not.toContain('@locator'); // original returned untouched
   });
 });
 

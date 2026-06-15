@@ -54,6 +54,8 @@ Detects Next.js and Vite. Installs the right loader and patches your config. Res
 npx clickcontext daemon
 ```
 
+> The daemon is global — one instance handles captures from all your localhost projects. Switch between tabs in different projects and your IDE always gets context from whichever element you last clicked.
+
 **4. Install the bookmarklet** (once):
 
 Open **http://127.0.0.1:7456/install** in your browser and drag the button to your bookmarks bar.
@@ -119,7 +121,11 @@ git clone https://github.com/gautham-psnl/clickcontext.git
 cd clickcontext
 npm install
 npm run build   # → dist/cli.js + dist/bookmarklet.browser.js
-npm test        # 70 tests
+npm test        # 97 tests
+
+# Throw a battery of real-world next.config shapes at the config patcher
+# and verify each patched output is still valid JS:
+node --import tsx/esm test/probe-configs.mjs
 ```
 
 Issues and PRs welcome at [github.com/gautham-psnl/clickcontext](https://github.com/gautham-psnl/clickcontext).
