@@ -53,7 +53,7 @@ function installPage(bookmarkletUrl: string): string {
 
 <div class="step">
   <h2>Step 1 — drag to bookmarks bar</h2>
-  <a class="bm" href="${escaped}" draggable="true">⬛ clickcontext</a>
+  <a class="bm" href="${escaped}" draggable="true">clickcontext</a>
   <p class="alt">Or paste this snippet directly into your browser console (click to copy):</p>
   <pre id="snippet" onclick="copySnippet(this)">${escapedSnippet}</pre>
 </div>
