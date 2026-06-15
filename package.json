@@ -1,6 +1,6 @@
 {
   "name": "clickcontext",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Select a live UI element in a localhost app and ask your AI IDE about it — grounded in real DOM, accessibility, React component stack, and source.",
   "type": "module",
   "license": "MIT",
