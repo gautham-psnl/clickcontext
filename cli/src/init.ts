@@ -55,7 +55,7 @@ function install(pkg: string, cwd: string): void {
 
 // --- Next.js config patching ---
 
-function patchNextConfig(content: string): { result: string; alreadyDone: boolean; error?: string } {
+export function patchNextConfig(content: string): { result: string; alreadyDone: boolean; error?: string } {
   if (content.includes('@locator/webpack-loader') || content.includes('data-clickcontext-source')) {
     return { result: content, alreadyDone: true };
   }
@@ -81,10 +81,17 @@ function patchNextConfig(content: string): { result: string; alreadyDone: boolea
   if (esmIdx === -1 && cjsIdx === -1) return { result: content, alreadyDone: false, error: 'could not find `export default` or `module.exports` in config file' };
 
   const searchIn = esmIdx !== -1 ? out.slice(0, esmIdx) : out;
-  const closingBrace = searchIn.lastIndexOf('};');
-  if (closingBrace === -1) return { result: content, alreadyDone: false, error: 'could not find config object closing `};`' };
 
-  out = out.slice(0, closingBrace) + TURBOPACK_BLOCK + '\n};\n' + out.slice(closingBrace + 2);
+  // Prefer `};` (most configs), fall back to bare `}` (e.g. CJS without trailing semicolon).
+  let closingBrace = searchIn.lastIndexOf('};');
+  let closingBraceLen = 2;
+  if (closingBrace === -1) {
+    closingBrace = searchIn.lastIndexOf('}');
+    closingBraceLen = 1;
+  }
+  if (closingBrace === -1) return { result: content, alreadyDone: false, error: 'could not find config object closing brace' };
+
+  out = out.slice(0, closingBrace) + TURBOPACK_BLOCK + '\n};\n' + out.slice(closingBrace + closingBraceLen);
   return { result: out, alreadyDone: false };
 }
 
