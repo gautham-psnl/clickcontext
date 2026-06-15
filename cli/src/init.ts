@@ -31,10 +31,14 @@ function detect(cwd: string): { framework: Framework; configFile: string | null 
   return { framework: 'unknown', configFile: null };
 }
 
+function isAvailable(cmd: string): boolean {
+  try { execSync(`${cmd} --version`, { stdio: 'pipe' }); return true; } catch { return false; }
+}
+
 function detectPackageManager(cwd: string): string {
-  if (existsSync(join(cwd, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (existsSync(join(cwd, 'yarn.lock'))) return 'yarn';
-  if (existsSync(join(cwd, 'bun.lockb'))) return 'bun';
+  if (existsSync(join(cwd, 'pnpm-lock.yaml')) && isAvailable('pnpm')) return 'pnpm';
+  if (existsSync(join(cwd, 'yarn.lock')) && isAvailable('yarn')) return 'yarn';
+  if (existsSync(join(cwd, 'bun.lockb')) && isAvailable('bun')) return 'bun';
   return 'npm';
 }
 
@@ -71,12 +75,13 @@ function patchNextConfig(content: string): { result: string; alreadyDone: boolea
     }
   }
 
-  // Find the closing brace of the config object — the last `};` before `export default`.
-  const exportIdx = out.lastIndexOf('export default');
-  if (exportIdx === -1) return { result: content, alreadyDone: false, error: 'could not find `export default` in config file' };
+  // Find the closing brace: last `};` before `export default` (ESM) or last `};` in file (CJS).
+  const esmIdx = out.lastIndexOf('export default');
+  const cjsIdx = out.lastIndexOf('module.exports');
+  if (esmIdx === -1 && cjsIdx === -1) return { result: content, alreadyDone: false, error: 'could not find `export default` or `module.exports` in config file' };
 
-  const beforeExport = out.slice(0, exportIdx);
-  const closingBrace = beforeExport.lastIndexOf('};');
+  const searchIn = esmIdx !== -1 ? out.slice(0, esmIdx) : out;
+  const closingBrace = searchIn.lastIndexOf('};');
   if (closingBrace === -1) return { result: content, alreadyDone: false, error: 'could not find config object closing `};`' };
 
   out = out.slice(0, closingBrace) + TURBOPACK_BLOCK + '\n};\n' + out.slice(closingBrace + 2);
