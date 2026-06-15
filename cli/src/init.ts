@@ -197,6 +197,29 @@ function insertBeforeClose(src: string, closeBrace: number, block: string): stri
   return src.slice(0, i + 1) + sep + '\n' + block + '\n' + src.slice(closeBrace);
 }
 
+/**
+ * Detect a function-form config — `export default (phase) => ({...})`,
+ * `module.exports = function () {...}`, etc. The config object is computed at
+ * runtime (often conditionally), so there is no single static object literal we
+ * can safely inject into. We bail with a clear message rather than guess which
+ * brace to patch and risk producing broken JS.
+ */
+function looksLikeFunctionConfig(src: string): boolean {
+  const exportLine =
+    src.match(/export\s+default\s+(.*)/)?.[1] ??
+    src.match(/module\.exports\s*=\s*(.*)/)?.[1] ?? '';
+  return /^(async\s+)?(function\b|\(|[A-Za-z_$][\w$]*\s*=>|\([^)]*\)\s*=>)/.test(exportLine.trim());
+}
+
+function locateError(src: string): string {
+  if (looksLikeFunctionConfig(src)) {
+    return 'your next.config exports a function, not a static object — clickcontext ' +
+      'can\'t safely auto-patch it. Add the loader to the config object the function ' +
+      'returns, using the snippet below';
+  }
+  return 'could not locate Next.js config object — patch manually (see README)';
+}
+
 export function patchNextConfig(
   content: string,
   runner: NextRunner = 'turbopack',
@@ -224,7 +247,7 @@ export function patchNextConfig(
     }
 
     const openBrace = findConfigOpenBrace(out);
-    if (openBrace === null) return { result: content, alreadyDone: false, error: 'could not locate Next.js config object — patch manually (see README)' };
+    if (openBrace === null) return { result: content, alreadyDone: false, error: locateError(content) };
     const closeBrace = matchingBrace(out, openBrace);
     if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 
@@ -247,7 +270,7 @@ export function patchNextConfig(
   const block = runner === 'experimental-turbo' ? EXPERIMENTAL_TURBO_BLOCK : TURBOPACK_BLOCK;
 
   const openBrace = findConfigOpenBrace(out);
-  if (openBrace === null) return { result: content, alreadyDone: false, error: 'could not locate Next.js config object — patch manually (see README)' };
+  if (openBrace === null) return { result: content, alreadyDone: false, error: locateError(content) };
   const closeBrace = matchingBrace(out, openBrace);
   if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 

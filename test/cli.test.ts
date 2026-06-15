@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { transformSync } from 'esbuild';
-import { bookmarkletUrl } from '../cli/src/cli';
+import { bookmarkletUrl, parsePort } from '../cli/src/cli';
 import { patchNextConfig, detectNextRunner } from '../cli/src/init';
 
 /** Assert the patched output is still syntactically valid JS/TS — the failure
@@ -332,5 +332,56 @@ describe('bookmarkletUrl', () => {
     const code = '__UI_CONTEXT_TOKEN_PLACEHOLDER__ and __UI_CONTEXT_TOKEN_PLACEHOLDER__';
     const decoded = decodeURIComponent(bookmarkletUrl(code, 'tok').slice('javascript:'.length));
     expect(decoded).toBe('tok and tok');
+  });
+
+  it('injects a custom port and leaves no port placeholder', () => {
+    const code = 'fetch("http://127.0.0.1:__CLICKCONTEXT_PORT_PLACEHOLDER__/capture")';
+    const decoded = decodeURIComponent(bookmarkletUrl(code, 'tok', 7500).slice('javascript:'.length));
+    expect(decoded).toContain('127.0.0.1:7500/capture');
+    expect(decoded).not.toContain('PLACEHOLDER');
+  });
+
+  it('defaults the port to 7456 when not given', () => {
+    const code = 'http://127.0.0.1:__CLICKCONTEXT_PORT_PLACEHOLDER__/capture';
+    const decoded = decodeURIComponent(bookmarkletUrl(code, 'tok').slice('javascript:'.length));
+    expect(decoded).toContain('127.0.0.1:7456/capture');
+  });
+});
+
+describe('parsePort', () => {
+  it('parses --port <n>', () => {
+    expect(parsePort(['daemon', '--port', '7500'])).toBe(7500);
+  });
+  it('parses --port=<n>', () => {
+    expect(parsePort(['daemon', '--port=8080'])).toBe(8080);
+  });
+  it('defaults to 7456 when absent', () => {
+    expect(parsePort(['daemon'])).toBe(7456);
+  });
+  it('ignores out-of-range / non-numeric values', () => {
+    expect(parsePort(['daemon', '--port', '99999'])).toBe(7456);
+    expect(parsePort(['daemon', '--port', 'abc'])).toBe(7456);
+    expect(parsePort(['daemon', '--port', '0'])).toBe(7456);
+  });
+});
+
+describe('function-form config detection', () => {
+  it('gives a function-specific message for arrow/function configs', () => {
+    for (const src of [
+      'export default () => ({ reactStrictMode: true });',
+      'export default async (phase) => {\n  return { reactStrictMode: true };\n};',
+      'module.exports = function (phase) { return { reactStrictMode: true }; };',
+    ]) {
+      const { error } = patchNextConfig(src);
+      expect(error).toMatch(/exports a function/);
+    }
+  });
+
+  it('still auto-patches a named-const config (not a false positive)', () => {
+    const src = `const nextConfig = { reactStrictMode: true };
+export default nextConfig;
+`;
+    const { error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
   });
 });

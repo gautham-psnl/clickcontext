@@ -16,7 +16,10 @@ await build({
   format: 'iife',
   minify: true,
   target: ['chrome120'],
-  define: { __UI_CONTEXT_TOKEN__: JSON.stringify('__UI_CONTEXT_TOKEN_PLACEHOLDER__') },
+  define: {
+    __UI_CONTEXT_TOKEN__: JSON.stringify('__UI_CONTEXT_TOKEN_PLACEHOLDER__'),
+    __CLICKCONTEXT_PORT__: JSON.stringify('__CLICKCONTEXT_PORT_PLACEHOLDER__'),
+  },
 });
 
 // 2) Node CLI — fully self-contained: bundles daemon + mcp + shared + all npm deps.

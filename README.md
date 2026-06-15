@@ -54,7 +54,13 @@ Detects Next.js and Vite. Installs the right loader and patches your config. Res
 npx clickcontext daemon
 ```
 
-> The daemon is global — one instance handles captures from all your localhost projects. Switch between tabs in different projects and your IDE always gets context from whichever element you last clicked.
+> The daemon is global — one instance handles captures from all your localhost projects. Switch between tabs in different projects and your IDE always gets context from whichever element you last clicked. If it's already running, starting it again just tells you so — no error.
+
+> **Port already in use?** The daemon uses port `7456`. If another process owns it, run on a different port and reinstall the bookmarklet from the new install page:
+> ```bash
+> npx clickcontext daemon --port 7500
+> # then open http://127.0.0.1:7500/install
+> ```
 
 **4. Install the bookmarklet** (once):
 
@@ -121,7 +127,7 @@ git clone https://github.com/gautham-psnl/clickcontext.git
 cd clickcontext
 npm install
 npm run build   # → dist/cli.js + dist/bookmarklet.browser.js
-npm test        # 97 tests
+npm test        # 105 tests
 
 # Throw a battery of real-world next.config shapes at the config patcher
 # and verify each patched output is still valid JS:

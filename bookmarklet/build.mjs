@@ -7,6 +7,9 @@ import { ensureToken } from '../shared/src/token.mjs';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const token = ensureToken();
+// Keep in sync with DAEMON_PORT in shared/src/constants.ts. This standalone
+// dev build bakes the default port; the shipped CLI build uses a placeholder.
+const DEFAULT_PORT = 7456;
 
 const result = await build({
   entryPoints: [join(here, 'src/index.ts')],
@@ -15,7 +18,10 @@ const result = await build({
   minify: true,
   write: false,
   target: ['chrome120'],
-  define: { __UI_CONTEXT_TOKEN__: JSON.stringify(token) },
+  define: {
+    __UI_CONTEXT_TOKEN__: JSON.stringify(token),
+    __CLICKCONTEXT_PORT__: JSON.stringify(String(DEFAULT_PORT)),
+  },
   // Browser bundle only imports the @ui/shared barrel (no node-only subpaths).
   alias: { '@ui/shared': join(root, 'shared/src/index.ts') },
 });
