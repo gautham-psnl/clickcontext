@@ -17,11 +17,11 @@ Then open **http://127.0.0.1:7456/install** → drag the bookmarklet to your boo
 **1. Register the MCP with your IDE** (once per machine):
 
 ```bash
-# Claude Code
-claude mcp add clickcontext -- npx -y clickcontext mcp
+# Claude Code (--scope user makes it available in every project, not just the current one)
+claude mcp add --scope user clickcontext -- npx -y clickcontext@latest mcp
 
 # Any other MCP-capable IDE — point it at the same command:
-npx -y clickcontext mcp
+npx -y clickcontext@latest mcp
 ```
 
 **2. Patch your app** (once per project — adds a dev-only source loader):
