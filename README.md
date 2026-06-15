@@ -35,10 +35,7 @@ claude mcp add --scope user clickcontext -- npx -y clickcontext@latest mcp
 ```
 Restart Claude Desktop after saving.
 
-**Any other MCP-capable IDE** — point it at:
-```
-npx -y clickcontext@latest mcp
-```
+> Currently tested with Claude Code and Claude Desktop. Other MCP-capable IDEs may work but are untested.
 
 **2. Patch your app** (once per project — adds a dev-only source loader):
 
