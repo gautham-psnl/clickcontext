@@ -328,6 +328,8 @@ export function runInit(cwd: string): void {
     process.stdout.write(`  patched ${configFile.replace(cwd + '/', '')}\n`);
   }
 
+  patchClaudeMd(cwd);
+
   process.stdout.write(`
 Done. Restart your dev server to pick up the new loader.
 Elements will now carry a build-time source attribute for deterministic
@@ -337,6 +339,26 @@ Next:
   clickcontext daemon        # start the capture daemon
   clickcontext bookmarklet   # get the bookmarklet (or visit http://127.0.0.1:7456/install)
 `);
+}
+
+const CLAUDE_MD_MARKER = '<!-- clickcontext -->';
+const CLAUDE_MD_BLOCK = `${CLAUDE_MD_MARKER}
+## clickcontext
+
+When the user asks about any UI element, component, styling, or visual behavior in
+their app, call the \`get_latest_ui_context\` MCP tool first. It returns the last element
+they clicked via the clickcontext bookmarklet: source file:line, React component stack,
+DOM path, and accessibility info. If nothing has been captured yet, ask them to activate
+the bookmarklet and click an element first.
+${CLAUDE_MD_MARKER}`;
+
+function patchClaudeMd(cwd: string): void {
+  const claudeMdPath = join(cwd, 'CLAUDE.md');
+  const existing = existsSync(claudeMdPath) ? readFileSync(claudeMdPath, 'utf8') : '';
+  if (existing.includes(CLAUDE_MD_MARKER)) return;
+  const updated = existing ? existing.trimEnd() + '\n\n' + CLAUDE_MD_BLOCK + '\n' : CLAUDE_MD_BLOCK + '\n';
+  writeFileSync(claudeMdPath, updated, 'utf8');
+  process.stdout.write(`  wrote CLAUDE.md hint (so your IDE calls clickcontext proactively)\n`);
 }
 
 function printManualInstructions(framework: Framework, runner: NextRunner): void {

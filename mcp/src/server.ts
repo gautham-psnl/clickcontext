@@ -12,7 +12,7 @@ export function buildServer(): McpServer {
     {
       title: 'Get latest UI context (compact)',
       description:
-        'Returns a COMPACT summary of the live UI element the developer most recently selected in their browser (via the UI Context bookmarklet): the selected element (tag/role/name/domPath), `primarySource` (the resolved source file:line — usually all you need to open the right code), and the user\'s own component frames (names + prop keys); library/framework frames collapse to an `otherFrames` count. ALWAYS call this FIRST whenever the user refers to a selected, inspected, or pointed-at UI element or component while debugging a local app — e.g. "this", "this element/component/button", "the component I selected/picked", "why is this disabled/hidden". This is the cheap default; only if it lacks what you need (component props, hook state, computed styles, raw HTML) call get_latest_ui_context_full.',
+        'CALL THIS FIRST when the user asks about any UI element, component, or anything visual in their browser — "what is this?", "why is this disabled?", "which component is this?", "what did I click?". Returns the last element the user clicked via the clickcontext bookmarklet: source file:line, React component stack, DOM path, and accessibility info. If no capture exists yet, tell them to activate the bookmarklet and click an element first. Only call get_latest_ui_context_full when you specifically need full props, hook state, or computed styles.',
     },
     async () => ({
       content: [{ type: 'text', text: await getLatestUiContextText(undefined, undefined, 'summary') }],
