@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bookmarkletUrl } from '../cli/src/cli';
-import { patchNextConfig } from '../cli/src/init';
+import { patchNextConfig, detectNextRunner } from '../cli/src/init';
 
 describe('patchNextConfig', () => {
   const ESM_SEMICOLON = `import type { NextConfig } from "next";
@@ -158,6 +158,92 @@ export default nextConfig;
     const { result } = patchNextConfig(ESM_SEMICOLON);
     const occurrences = (result.match(/const isDev/g) ?? []).length;
     expect(occurrences).toBe(1);
+  });
+
+  // --- runner: webpack ---
+  it('injects webpack function for runner=webpack', () => {
+    const { result, error } = patchNextConfig(CJS_SEMICOLON, 'webpack');
+    expect(error).toBeUndefined();
+    expect(result).toContain('config.module.rules.push');
+    expect(result).toContain('@locator/webpack-loader');
+    expect(result).not.toContain('isDev');
+  });
+
+  it('errors when runner=webpack and webpack function already exists', () => {
+    const src = `const nextConfig = {
+  webpack: (config, { dev }) => { return config; },
+};
+module.exports = nextConfig;
+`;
+    const { error } = patchNextConfig(src, 'webpack');
+    expect(error).toMatch(/already has a webpack function/);
+  });
+
+  // --- runner: experimental-turbo ---
+  it('injects experimental.turbo block for runner=experimental-turbo', () => {
+    const { result, error } = patchNextConfig(ESM_SEMICOLON, 'experimental-turbo');
+    expect(error).toBeUndefined();
+    expect(result).toContain('experimental');
+    expect(result).toContain('turbo');
+    expect(result).toContain('@locator/webpack-loader');
+  });
+
+  // --- withPlugins([...], config) pattern ---
+  it('patches withPlugins([...], nextConfig) — config as 2nd arg after array', () => {
+    const src = `const withPlugins = require('next-compose-plugins');
+const nextConfig = {
+  reactStrictMode: true,
+};
+module.exports = withPlugins([[require('@next/bundle-analyzer')({ enabled: false })]], nextConfig);
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+  });
+});
+
+describe('detectNextRunner', () => {
+  const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
+  const { join } = require('node:path');
+  const { tmpdir } = require('node:os');
+
+  function makePkg(nextVer: string, devScript = 'next dev') {
+    const dir = mkdtempSync(join(tmpdir(), 'cc-test-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({
+      dependencies: { next: nextVer },
+      scripts: { dev: devScript },
+    }));
+    return dir;
+  }
+
+  it('returns turbopack for Next.js 15', () => {
+    const dir = makePkg('^15.0.0');
+    expect(detectNextRunner(dir)).toBe('turbopack');
+    rmSync(dir, { recursive: true });
+  });
+
+  it('returns webpack for Next.js 14 without --turbo', () => {
+    const dir = makePkg('^14.2.5');
+    expect(detectNextRunner(dir)).toBe('webpack');
+    rmSync(dir, { recursive: true });
+  });
+
+  it('returns experimental-turbo for Next.js 14 with --turbo', () => {
+    const dir = makePkg('^14.2.5', 'next dev --turbo');
+    expect(detectNextRunner(dir)).toBe('experimental-turbo');
+    rmSync(dir, { recursive: true });
+  });
+
+  it('returns webpack for Next.js 15 with --no-turbo', () => {
+    const dir = makePkg('^15.0.0', 'next dev --no-turbo');
+    expect(detectNextRunner(dir)).toBe('webpack');
+    rmSync(dir, { recursive: true });
+  });
+
+  it('defaults to webpack when no package.json', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cc-test-'));
+    expect(detectNextRunner(dir)).toBe('webpack');
+    rmSync(dir, { recursive: true });
   });
 });
 

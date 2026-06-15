@@ -2,7 +2,11 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// The turbopack block we inject into next.config.* for Next.js + Turbopack.
+type Framework = 'nextjs' | 'vite' | 'unknown';
+export type NextRunner = 'turbopack' | 'experimental-turbo' | 'webpack';
+
+// --- Config blocks injected per runner ---
+
 const TURBOPACK_BLOCK = `  ...(isDev && {
     turbopack: {
       rules: {
@@ -15,11 +19,37 @@ const TURBOPACK_BLOCK = `  ...(isDev && {
     },
   }),`;
 
-// The Vite block we inject inside the react() plugin options.
+// Next.js 14 with --turbo uses experimental.turbo instead of the stable turbopack key.
+const EXPERIMENTAL_TURBO_BLOCK = `  ...(isDev && {
+    experimental: {
+      turbo: {
+        rules: {
+          "**/*.{tsx,jsx}": {
+            loaders: [
+              { loader: "@locator/webpack-loader", options: { env: "development" } },
+            ],
+          },
+        },
+      },
+    },
+  }),`;
+
+// Webpack: uses the `webpack:` function with the `dev` param — no isDev needed.
+const WEBPACK_BLOCK = `  webpack: (config, { dev }) => {
+    if (dev) {
+      config.module.rules.push({
+        test: /\\.(tsx|jsx)$/,
+        use: [{ loader: '@locator/webpack-loader', options: { env: 'development' } }],
+      });
+    }
+    return config;
+  },`;
+
+// The Vite block injected inside the react() plugin options.
 const VITE_BABEL_IMPORT = `import locatorPlugin from "@locator/babel-jsx";\n`;
 const VITE_BABEL_BLOCK = `    babel: { plugins: [locatorPlugin] },\n`;
 
-type Framework = 'nextjs' | 'vite' | 'unknown';
+// --- Detection ---
 
 function detect(cwd: string): { framework: Framework; configFile: string | null } {
   for (const name of ['next.config.ts', 'next.config.mjs', 'next.config.js']) {
@@ -29,6 +59,26 @@ function detect(cwd: string): { framework: Framework; configFile: string | null 
     if (existsSync(join(cwd, name))) return { framework: 'vite', configFile: join(cwd, name) };
   }
   return { framework: 'unknown', configFile: null };
+}
+
+/** Detect whether the project uses Turbopack, experimental turbo (v14 + --turbo), or webpack. */
+export function detectNextRunner(cwd: string): NextRunner {
+  try {
+    const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')) as Record<string, unknown>;
+    const deps = {
+      ...(pkg.dependencies as Record<string, string> | undefined),
+      ...(pkg.devDependencies as Record<string, string> | undefined),
+    };
+    const nextVer = deps['next'] ?? '';
+    const major = parseInt((nextVer as string).match(/\d+/)?.[0] ?? '0', 10);
+    const devScript = ((pkg.scripts as Record<string, string> | undefined)?.dev) ?? '';
+
+    if (major >= 15 && !devScript.includes('--no-turbo')) return 'turbopack'; // stable, default in v15
+    if (devScript.includes('--turbo')) return 'experimental-turbo';           // v14 opt-in
+    return 'webpack';
+  } catch {
+    return 'webpack'; // safe default
+  }
 }
 
 function isAvailable(cmd: string): boolean {
@@ -65,7 +115,6 @@ function matchingBrace(src: string, openAt: number): number | null {
   while (i < src.length) {
     const ch = src[i];
     if (ch === '"' || ch === "'") {
-      // Skip quoted string
       i++;
       while (i < src.length) {
         if (src[i] === '\\') { i += 2; continue; }
@@ -75,7 +124,6 @@ function matchingBrace(src: string, openAt: number): number | null {
       continue;
     }
     if (ch === '`') {
-      // Skip template literal (simplified — no nested ${})
       i++;
       while (i < src.length) {
         if (src[i] === '\\') { i += 2; continue; }
@@ -103,27 +151,26 @@ function matchingBrace(src: string, openAt: number): number | null {
 
 /** Find the opening `{` of the Next.js config object. */
 function findConfigOpenBrace(src: string): number | null {
-  // Collect candidate variable names to look for, in priority order.
   const namesToTry: string[] = [];
 
-  // Strategy A: direct named export — export default nextConfig / module.exports = nextConfig
+  // Strategy A: direct named export
   const directExport =
     src.match(/export\s+default\s+([A-Za-z_$][\w$]*)/)?.[1] ??
     src.match(/module\.exports\s*=\s*([A-Za-z_$][\w$]*)/)?.[1];
   if (directExport) namesToTry.push(directExport);
 
-  // Strategy B: wrapped export — export default withPlugin(nextConfig, ...)
-  // Extract every identifier that appears right after `(` in the export line.
+  // Strategy B: wrapped export — extract identifiers from wrapper args.
+  // Uses [,(] so `withPlugins([...], nextConfig)` (comma-separated) is also caught.
   const exportLine =
     src.match(/export\s+default\s+.+/)?.[0] ??
     src.match(/module\.exports\s*=\s*.+/)?.[0] ?? '';
-  for (const m of exportLine.matchAll(/\(([A-Za-z_$][\w$]*)/g)) namesToTry.push(m[1]);
+  for (const m of exportLine.matchAll(/[,(]\s*([A-Za-z_$][\w$]*)/g)) namesToTry.push(m[1]);
 
-  // Try each name: look for const/let/var <name>[: TypeAnnotation] = {
+  // Try each candidate: look for const/let/var <name>[: TypeAnnotation] = {
   for (const name of namesToTry) {
     const declRe = new RegExp(`(?:const|let|var)\\s+${name}\\b[^=]*=\\s*\\{`);
     const m = src.match(declRe);
-    if (m?.index !== undefined) return m.index + m[0].length - 1; // last char is `{`
+    if (m?.index !== undefined) return m.index + m[0].length - 1;
   }
 
   // Strategy C: inline export — export default { or module.exports = {
@@ -136,14 +183,42 @@ function findConfigOpenBrace(src: string): number | null {
   return null;
 }
 
-export function patchNextConfig(content: string): { result: string; alreadyDone: boolean; error?: string } {
+export function patchNextConfig(
+  content: string,
+  runner: NextRunner = 'turbopack',
+): { result: string; alreadyDone: boolean; error?: string } {
   if (content.includes('@locator/webpack-loader') || content.includes('data-clickcontext-source')) {
     return { result: content, alreadyDone: true };
   }
 
   let out = content;
 
-  // Inject isDev after the last import/require line (top of file area).
+  if (runner === 'webpack') {
+    // Webpack: inject a new `webpack:` function.  If one already exists, bail — adding a second
+    // key would silently override the first.
+    if (/\bwebpack\s*[:(]/.test(out)) {
+      return {
+        result: content,
+        alreadyDone: false,
+        error: 'config already has a webpack function — add the loader push manually:\n\n' +
+          '    config.module.rules.push({\n' +
+          '      test: /\\.(tsx|jsx)$/,\n' +
+          "      use: [{ loader: '@locator/webpack-loader', options: { env: 'development' } }],\n" +
+          '    });\n\n' +
+          '  Add it inside the `if (dev)` guard before `return config`.',
+      };
+    }
+
+    const openBrace = findConfigOpenBrace(out);
+    if (openBrace === null) return { result: content, alreadyDone: false, error: 'could not locate Next.js config object — patch manually (see README)' };
+    const closeBrace = matchingBrace(out, openBrace);
+    if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
+
+    out = out.slice(0, closeBrace) + WEBPACK_BLOCK + '\n' + out.slice(closeBrace);
+    return { result: out, alreadyDone: false };
+  }
+
+  // Turbopack and experimental-turbo both use the isDev spread pattern.
   if (!out.includes('isDev')) {
     const lastImport = [...out.matchAll(/^(?:import\s[^;]+;|const\s+\w+\s*=\s*require\([^)]+\);)\s*$/gm)];
     if (lastImport.length) {
@@ -155,14 +230,14 @@ export function patchNextConfig(content: string): { result: string; alreadyDone:
     }
   }
 
-  // Find the config object and inject turbopack block before its closing `}`.
+  const block = runner === 'experimental-turbo' ? EXPERIMENTAL_TURBO_BLOCK : TURBOPACK_BLOCK;
+
   const openBrace = findConfigOpenBrace(out);
   if (openBrace === null) return { result: content, alreadyDone: false, error: 'could not locate Next.js config object — patch manually (see README)' };
-
   const closeBrace = matchingBrace(out, openBrace);
   if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 
-  out = out.slice(0, closeBrace) + TURBOPACK_BLOCK + '\n' + out.slice(closeBrace);
+  out = out.slice(0, closeBrace) + block + '\n' + out.slice(closeBrace);
   return { result: out, alreadyDone: false };
 }
 
@@ -178,7 +253,6 @@ function patchViteConfig(content: string): { result: string; alreadyDone: boolea
 
   let out = content;
 
-  // Add import at the top (after last existing import).
   const lastImport = [...out.matchAll(/^import\s[^;]+;\s*$/gm)];
   if (lastImport.length) {
     const last = lastImport[lastImport.length - 1];
@@ -188,7 +262,6 @@ function patchViteConfig(content: string): { result: string; alreadyDone: boolea
     out = VITE_BABEL_IMPORT + out;
   }
 
-  // Inject babel option into react({ ... }) — find the first `react({` and add inside.
   out = out.replace(/react\(\{/, `react({\n${VITE_BABEL_BLOCK}`);
   return { result: out, alreadyDone: false };
 }
@@ -209,7 +282,14 @@ export function runInit(cwd: string): void {
 
   process.stdout.write(`  detected: ${framework} (${configFile.replace(cwd + '/', '')})\n`);
 
-  // 1. Install the right package.
+  const runner = framework === 'nextjs' ? detectNextRunner(cwd) : null;
+  if (runner) {
+    const runnerLabel = runner === 'turbopack' ? 'Turbopack (Next.js 15+)' :
+                        runner === 'experimental-turbo' ? 'Turbopack experimental (Next.js 14 + --turbo)' :
+                        'webpack (Next.js 14)';
+    process.stdout.write(`  bundler: ${runnerLabel}\n`);
+  }
+
   const pkg = framework === 'vite' ? '@locator/babel-jsx' : '@locator/webpack-loader';
   const pkgJson = join(cwd, 'package.json');
   let alreadyInstalled = false;
@@ -219,6 +299,7 @@ export function runInit(cwd: string): void {
       alreadyInstalled = !!(p.devDependencies?.[pkg] ?? p.dependencies?.[pkg]);
     } catch { /* ignore */ }
   }
+
   if (alreadyInstalled) {
     process.stdout.write(`  ${pkg} already installed — skipping install\n`);
   } else {
@@ -231,16 +312,17 @@ export function runInit(cwd: string): void {
     }
   }
 
-  // 2. Patch the config file.
   const content = readFileSync(configFile, 'utf8');
   const { result, alreadyDone, error } =
-    framework === 'nextjs' ? patchNextConfig(content) : patchViteConfig(content);
+    framework === 'nextjs'
+      ? patchNextConfig(content, runner!)
+      : patchViteConfig(content);
 
   if (alreadyDone) {
     process.stdout.write(`  config already patched — nothing to do\n`);
   } else if (error) {
     process.stdout.write(`  could not auto-patch: ${error}\n`);
-    printManualInstructions(framework);
+    printManualInstructions(framework, runner ?? 'turbopack');
   } else {
     writeFileSync(configFile, result, 'utf8');
     process.stdout.write(`  patched ${configFile.replace(cwd + '/', '')}\n`);
@@ -257,14 +339,46 @@ Next:
 `);
 }
 
-function printManualInstructions(framework: Framework): void {
+function printManualInstructions(framework: Framework, runner: NextRunner): void {
   if (framework === 'nextjs') {
-    process.stdout.write(`
-  Add this to your next.config.ts manually:
+    if (runner === 'webpack') {
+      process.stdout.write(`
+  Add this to your next.config webpack function:
+
+    webpack: (config, { dev }) => {
+      if (dev) {
+        config.module.rules.push({
+          test: /\\.(tsx|jsx)$/,
+          use: [{ loader: '@locator/webpack-loader', options: { env: 'development' } }],
+        });
+      }
+      return config;
+    },
+`);
+    } else if (runner === 'experimental-turbo') {
+      process.stdout.write(`
+  Add this to your next.config object:
 
     const isDev = process.env.NODE_ENV !== "production";
 
-    // inside your nextConfig object:
+    ...(isDev && {
+      experimental: {
+        turbo: {
+          rules: {
+            "**/*.{tsx,jsx}": {
+              loaders: [{ loader: "@locator/webpack-loader", options: { env: "development" } }],
+            },
+          },
+        },
+      },
+    }),
+`);
+    } else {
+      process.stdout.write(`
+  Add this to your next.config object:
+
+    const isDev = process.env.NODE_ENV !== "production";
+
     ...(isDev && {
       turbopack: {
         rules: {
@@ -275,9 +389,10 @@ function printManualInstructions(framework: Framework): void {
       },
     }),
 `);
+    }
   } else {
     process.stdout.write(`
-  Add this to your vite.config.ts manually:
+  Add this to your vite.config.ts:
 
     import locatorPlugin from "@locator/babel-jsx";
 
