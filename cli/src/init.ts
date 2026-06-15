@@ -55,6 +55,41 @@ function install(pkg: string, cwd: string): void {
 
 // --- Next.js config patching ---
 
+/** Walk src from the `{` at openAt, counting braces, return index of matching `}`. */
+function matchingBrace(src: string, openAt: number): number | null {
+  let depth = 0;
+  for (let i = openAt; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { if (--depth === 0) return i; }
+  }
+  return null;
+}
+
+/** Find the opening `{` of the Next.js config object. */
+function findConfigOpenBrace(src: string): number | null {
+  // Strategy A: named export → find that variable's object literal
+  //   export default nextConfig  or  module.exports = nextConfig
+  const exportedName =
+    src.match(/export\s+default\s+([A-Za-z_$][\w$]*)/)?.[1] ??
+    src.match(/module\.exports\s*=\s*([A-Za-z_$][\w$]*)/)?.[1];
+
+  if (exportedName) {
+    // const/let/var <name>[: <TypeAnnotation>] = {
+    const declRe = new RegExp(`(?:const|let|var)\\s+${exportedName}\\b[^=]*=\\s*\\{`);
+    const m = src.match(declRe);
+    if (m?.index !== undefined) return m.index + m[0].length - 1; // last char is `{`
+  }
+
+  // Strategy B: inline object — export default { or module.exports = {
+  const inlineESM = src.match(/export\s+default\s*\{/);
+  if (inlineESM?.index !== undefined) return inlineESM.index + inlineESM[0].length - 1;
+
+  const inlineCJS = src.match(/module\.exports\s*=\s*\{/);
+  if (inlineCJS?.index !== undefined) return inlineCJS.index + inlineCJS[0].length - 1;
+
+  return null;
+}
+
 export function patchNextConfig(content: string): { result: string; alreadyDone: boolean; error?: string } {
   if (content.includes('@locator/webpack-loader') || content.includes('data-clickcontext-source')) {
     return { result: content, alreadyDone: true };
@@ -62,9 +97,8 @@ export function patchNextConfig(content: string): { result: string; alreadyDone:
 
   let out = content;
 
-  // Add isDev const before the nextConfig declaration (after the last import line).
+  // Inject isDev after the last import/require line (top of file area).
   if (!out.includes('isDev')) {
-    // Insert after the last top-level import/require statement.
     const lastImport = [...out.matchAll(/^(?:import\s[^;]+;|const\s+\w+\s*=\s*require\([^)]+\);)\s*$/gm)];
     if (lastImport.length) {
       const last = lastImport[lastImport.length - 1];
@@ -75,23 +109,14 @@ export function patchNextConfig(content: string): { result: string; alreadyDone:
     }
   }
 
-  // Find the closing brace: last `};` before `export default` (ESM) or last `};` in file (CJS).
-  const esmIdx = out.lastIndexOf('export default');
-  const cjsIdx = out.lastIndexOf('module.exports');
-  if (esmIdx === -1 && cjsIdx === -1) return { result: content, alreadyDone: false, error: 'could not find `export default` or `module.exports` in config file' };
+  // Find the config object and inject turbopack block before its closing `}`.
+  const openBrace = findConfigOpenBrace(out);
+  if (openBrace === null) return { result: content, alreadyDone: false, error: 'could not locate Next.js config object — patch manually (see README)' };
 
-  const searchIn = esmIdx !== -1 ? out.slice(0, esmIdx) : out;
+  const closeBrace = matchingBrace(out, openBrace);
+  if (closeBrace === null) return { result: content, alreadyDone: false, error: 'unbalanced braces in config file — patch manually (see README)' };
 
-  // Prefer `};` (most configs), fall back to bare `}` (e.g. CJS without trailing semicolon).
-  let closingBrace = searchIn.lastIndexOf('};');
-  let closingBraceLen = 2;
-  if (closingBrace === -1) {
-    closingBrace = searchIn.lastIndexOf('}');
-    closingBraceLen = 1;
-  }
-  if (closingBrace === -1) return { result: content, alreadyDone: false, error: 'could not find config object closing brace' };
-
-  out = out.slice(0, closingBrace) + TURBOPACK_BLOCK + '\n};\n' + out.slice(closingBrace + closingBraceLen);
+  out = out.slice(0, closeBrace) + TURBOPACK_BLOCK + '\n' + out.slice(closeBrace);
   return { result: out, alreadyDone: false };
 }
 

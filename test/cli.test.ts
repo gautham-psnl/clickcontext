@@ -65,8 +65,8 @@ module.exports = nextConfig;
     expect(result).toContain('@locator/webpack-loader');
     expect(result).toContain('isDev');
     expect(result).toContain('module.exports = nextConfig');
-    // The output must be valid JS: config object should close with `};`
-    expect(result).toMatch(/\}\;\s*\n+module\.exports/);
+    // Turbopack block inserted before closing `}`, original `}` preserved
+    expect(result).toMatch(/webpack-loader[\s\S]+\}\s*\n+module\.exports/);
   });
 
   it('is idempotent — skips already-patched configs', () => {
@@ -78,7 +78,7 @@ module.exports = nextConfig;
 
   it('returns error when no export statement is found', () => {
     const { error } = patchNextConfig('const x = 1;\n');
-    expect(error).toMatch(/export default|module\.exports/);
+    expect(error).toMatch(/locate|config object/);
   });
 
   it('does not inject isDev twice if it already exists', () => {
