@@ -47,7 +47,6 @@ function installPage(bookmarkletUrl: string): string {
   pre{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px;font-size:.78rem;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:80px;cursor:pointer;position:relative}
   pre::after{content:"click to copy";position:absolute;right:10px;top:8px;font-size:.7rem;color:#9ca3af;font-family:system-ui}
   pre.copied::after{content:"copied!";color:#4f46e5}
-  .done{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;font-size:.85rem;color:#166534;display:none}
 </style>
 <h1>clickcontext</h1>
 <p class="sub">Select a UI element → ask your AI IDE about it</p>

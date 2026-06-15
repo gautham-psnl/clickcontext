@@ -36,7 +36,6 @@ function hoverLabel(el: Element): string {
 }
 
 export function startPicker(onSelect: (el: Element) => void): PickerHandle {
-  // Highlight box
   const box = document.createElement('div');
   Object.assign(box.style, {
     position: 'fixed', pointerEvents: 'none', zIndex: '2147483647',
@@ -45,7 +44,6 @@ export function startPicker(onSelect: (el: Element) => void): PickerHandle {
   } as Partial<CSSStyleDeclaration>);
   document.body.appendChild(box);
 
-  // Hover label chip
   const chip = document.createElement('div');
   Object.assign(chip.style, {
     position: 'fixed', pointerEvents: 'none', zIndex: '2147483647',

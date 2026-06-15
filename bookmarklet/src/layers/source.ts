@@ -19,10 +19,7 @@ function fiberKey(el: Element): string | undefined {
   return Object.keys(el).find((k) => k.startsWith('__reactFiber$'));
 }
 
-/**
- * Parse a build-time source attribute value of the form `/abs/path:line:column`.
- * Splits on the last two colons so Windows drive paths (C:\…) survive.
- */
+// Splits on the last two colons so Windows drive paths (C:\…) survive.
 function parseSourceAttr(value: string | null): { file: string; line: number; column: number } | null {
   if (!value) return null;
   const lastColon = value.lastIndexOf(':');
@@ -36,11 +33,6 @@ function parseSourceAttr(value: string | null): { file: string; line: number; co
   return { file, line, column };
 }
 
-/**
- * Tier 0+ (build attribute): the nearest ancestor carrying a build-time source
- * attribute. Deterministic and bundler-proof — no source maps, no fiber debug data.
- * Requires the project to run a source-injecting loader in dev.
- */
 export function captureBuildAttr(el: Element): SourceLayer {
   const found = el.closest(BUILD_ATTR_SELECTOR);
   if (found) {
