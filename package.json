@@ -46,10 +46,7 @@
     "daemon": "tsx cli/src/cli.ts daemon",
     "mcp": "tsx cli/src/cli.ts mcp"
   },
-  "dependencies": {
-    "@jridgewell/trace-mapping": "^0.3.25",
-    "@modelcontextprotocol/sdk": "^1.12.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.0",
     "dom-accessibility-api": "^0.7.0",

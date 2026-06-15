@@ -19,7 +19,8 @@ await build({
   define: { __UI_CONTEXT_TOKEN__: JSON.stringify('__UI_CONTEXT_TOKEN_PLACEHOLDER__') },
 });
 
-// 2) Node CLI — bundles daemon + mcp + shared; keeps the two npm runtime deps external.
+// 2) Node CLI — fully self-contained: bundles daemon + mcp + shared + all npm deps.
+//    Bundling the MCP SDK keeps only the stdio transport (tree-shakes express/hono/http).
 await build({
   entryPoints: [join(root, 'cli/src/cli.ts')],
   outfile: join(dist, 'cli.js'),
@@ -28,7 +29,6 @@ await build({
   format: 'esm',
   target: ['node18'],
   banner: { js: '#!/usr/bin/env node' },
-  external: ['@modelcontextprotocol/sdk', '@jridgewell/trace-mapping'],
 });
 
 console.log('built dist/cli.js + dist/bookmarklet.browser.js');
