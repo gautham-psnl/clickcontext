@@ -16,11 +16,27 @@ Then open **http://127.0.0.1:7456/install** → drag the bookmarklet to your boo
 
 **1. Register the MCP with your IDE** (once per machine):
 
+**Claude Code:**
 ```bash
-# Claude Code (--scope user makes it available in every project, not just the current one)
 claude mcp add --scope user clickcontext -- npx -y clickcontext@latest mcp
+```
+> `--scope user` makes it available in every project, not just the current directory.
 
-# Any other MCP-capable IDE — point it at the same command:
+**Claude Desktop** — edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+```json
+{
+  "mcpServers": {
+    "clickcontext": {
+      "command": "npx",
+      "args": ["-y", "clickcontext@latest", "mcp"]
+    }
+  }
+}
+```
+Restart Claude Desktop after saving.
+
+**Any other MCP-capable IDE** — point it at:
+```
 npx -y clickcontext@latest mcp
 ```
 

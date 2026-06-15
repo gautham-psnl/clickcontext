@@ -55,32 +55,78 @@ function install(pkg: string, cwd: string): void {
 
 // --- Next.js config patching ---
 
-/** Walk src from the `{` at openAt, counting braces, return index of matching `}`. */
+/**
+ * Walk src from the `{` at openAt, counting braces — skipping string literals,
+ * template literals, and comments so unbalanced braces inside them don't confuse the count.
+ */
 function matchingBrace(src: string, openAt: number): number | null {
   let depth = 0;
-  for (let i = openAt; i < src.length; i++) {
-    if (src[i] === '{') depth++;
-    else if (src[i] === '}') { if (--depth === 0) return i; }
+  let i = openAt;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === '"' || ch === "'") {
+      // Skip quoted string
+      i++;
+      while (i < src.length) {
+        if (src[i] === '\\') { i += 2; continue; }
+        if (src[i] === ch) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if (ch === '`') {
+      // Skip template literal (simplified — no nested ${})
+      i++;
+      while (i < src.length) {
+        if (src[i] === '\\') { i += 2; continue; }
+        if (src[i] === '`') { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if (ch === '/' && src[i + 1] === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+      continue;
+    }
+    if (ch === '/' && src[i + 1] === '*') {
+      i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    if (ch === '{') depth++;
+    else if (ch === '}') { if (--depth === 0) return i; }
+    i++;
   }
   return null;
 }
 
 /** Find the opening `{` of the Next.js config object. */
 function findConfigOpenBrace(src: string): number | null {
-  // Strategy A: named export → find that variable's object literal
-  //   export default nextConfig  or  module.exports = nextConfig
-  const exportedName =
+  // Collect candidate variable names to look for, in priority order.
+  const namesToTry: string[] = [];
+
+  // Strategy A: direct named export — export default nextConfig / module.exports = nextConfig
+  const directExport =
     src.match(/export\s+default\s+([A-Za-z_$][\w$]*)/)?.[1] ??
     src.match(/module\.exports\s*=\s*([A-Za-z_$][\w$]*)/)?.[1];
+  if (directExport) namesToTry.push(directExport);
 
-  if (exportedName) {
-    // const/let/var <name>[: <TypeAnnotation>] = {
-    const declRe = new RegExp(`(?:const|let|var)\\s+${exportedName}\\b[^=]*=\\s*\\{`);
+  // Strategy B: wrapped export — export default withPlugin(nextConfig, ...)
+  // Extract every identifier that appears right after `(` in the export line.
+  const exportLine =
+    src.match(/export\s+default\s+.+/)?.[0] ??
+    src.match(/module\.exports\s*=\s*.+/)?.[0] ?? '';
+  for (const m of exportLine.matchAll(/\(([A-Za-z_$][\w$]*)/g)) namesToTry.push(m[1]);
+
+  // Try each name: look for const/let/var <name>[: TypeAnnotation] = {
+  for (const name of namesToTry) {
+    const declRe = new RegExp(`(?:const|let|var)\\s+${name}\\b[^=]*=\\s*\\{`);
     const m = src.match(declRe);
     if (m?.index !== undefined) return m.index + m[0].length - 1; // last char is `{`
   }
 
-  // Strategy B: inline object — export default { or module.exports = {
+  // Strategy C: inline export — export default { or module.exports = {
   const inlineESM = src.match(/export\s+default\s*\{/);
   if (inlineESM?.index !== undefined) return inlineESM.index + inlineESM[0].length - 1;
 

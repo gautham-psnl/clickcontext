@@ -81,6 +81,79 @@ module.exports = nextConfig;
     expect(error).toMatch(/locate|config object/);
   });
 
+  it('patches withNextIntl wrapper — export default withNextIntl(nextConfig)', () => {
+    const src = `import createNextIntlPlugin from 'next-intl/plugin';
+const withNextIntl = createNextIntlPlugin();
+const nextConfig = {
+  reactStrictMode: true,
+};
+export default withNextIntl(nextConfig);
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+    expect(result).toContain('export default withNextIntl(nextConfig)');
+  });
+
+  it('patches withSentryConfig wrapper — export default withSentryConfig(nextConfig, sentryOpts)', () => {
+    const src = `import { withSentryConfig } from '@sentry/nextjs';
+const nextConfig = {
+  output: 'standalone',
+};
+export default withSentryConfig(nextConfig, { silent: true });
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+  });
+
+  it('patches CJS withBundleAnalyzer wrapper', () => {
+    const src = `const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: false });
+const nextConfig = {
+  reactStrictMode: true,
+};
+module.exports = withBundleAnalyzer(nextConfig);
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+  });
+
+  it('handles string values containing braces without losing count', () => {
+    const src = `const nextConfig = {
+  env: { MESSAGE: 'open { bracket' },
+};
+export default nextConfig;
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+    expect(result).toContain('export default nextConfig');
+  });
+
+  it('handles inline export default object', () => {
+    const src = `export default {
+  reactStrictMode: true,
+  images: { domains: ['cdn.example.com'] },
+};
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+  });
+
+  it('patches config with satisfies keyword', () => {
+    const src = `import type { NextConfig } from 'next';
+const nextConfig = {
+  output: 'export',
+} satisfies NextConfig;
+export default nextConfig;
+`;
+    const { result, error } = patchNextConfig(src);
+    expect(error).toBeUndefined();
+    expect(result).toContain('@locator/webpack-loader');
+  });
+
   it('does not inject isDev twice if it already exists', () => {
     const { result } = patchNextConfig(ESM_SEMICOLON);
     const occurrences = (result.match(/const isDev/g) ?? []).length;
